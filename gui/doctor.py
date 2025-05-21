@@ -5,6 +5,7 @@ from utils.db import db_cursor
 from gui.add_patient import AddPatientDialog
 from gui.patient import PatientWindow          # Hasta paneli
 from gui.status import StatusWindow            # Günlük diyet/egzersiz
+from gui.email_settings import EmailSettingsDialog  # E-posta ayarları
 
 class DoctorWindow(tk.Toplevel):
     """Doktorun hasta listesini görüntülediği ve yönetebildiği pencere."""
@@ -143,7 +144,10 @@ class DoctorWindow(tk.Toplevel):
         btn_row1.pack(fill="x", pady=(0, 10))
         
         btn_row2 = ttk.Frame(btn_frm)
-        btn_row2.pack(fill="x")
+        btn_row2.pack(fill="x", pady=(0, 10))
+        
+        btn_row3 = ttk.Frame(btn_frm)
+        btn_row3.pack(fill="x")
 
         # Responsive butonlar - İlk satır
         btn1 = ttk.Button(
@@ -178,6 +182,15 @@ class DoctorWindow(tk.Toplevel):
             command=self._refresh
         )
         btn4.pack(side="right", padx=(10, 0), fill="x", expand=True)
+        
+        # E-posta ayarları butonu - Üçüncü satır
+        email_settings_btn = ttk.Button(
+            btn_row3,
+            text="E-posta Ayarları",
+            bootstyle="info",
+            command=self._open_email_settings
+        )
+        email_settings_btn.pack(fill="x", expand=True)
         
         # Footer
         footer_frame = ttk.Frame(self)
@@ -334,3 +347,8 @@ class DoctorWindow(tk.Toplevel):
         patient_id = int(sel[0])
         full_name  = self.tree.item(sel[0], "values")[1]
         StatusWindow(self, patient_id, full_name)
+
+    # ------------------------------------------------------------
+    def _open_email_settings(self):
+        """E-posta ayarları penceresini açar."""
+        EmailSettingsDialog(self)

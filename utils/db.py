@@ -3,10 +3,10 @@ import mysql.connector
 from contextlib import contextmanager
 
 DB_CONFIG = {
-    "user":       "dts_user",
-    "password":   "SüperZorParola_123",
+    "user":       "root",
+    "password":   "admin123",
     "host":       "localhost",
-    "database":   "diabetes",
+    "database":   "diabetes1",
     "charset":    "utf8mb4",
     "autocommit": True,
 }
