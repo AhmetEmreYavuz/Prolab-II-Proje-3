@@ -3,32 +3,35 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import date
 from services.glucose import add_glucose, list_today
-from services.rules import evaluate_day
 from services.daily import upsert_status
-
+from services.rules import evaluate_day
+from utils.db import db_cursor
 
 
 class PatientWindow(tk.Toplevel):
+    """Hastanın ölçüm, diyet ve egzersiz girebildiği pencere."""
+
     def __init__(self, master, patient_id: int):
         super().__init__(master)
-        self.title("Hasta Paneli")
-        self.geometry("320x260")
         self.patient_id = patient_id
+        self.title("Hasta Paneli")
+        self.geometry("340x370")
 
-        # ---------- Ölçüm girişi ----------
-        frame = ttk.LabelFrame(self, text="Yeni Ölçüm")
-        frame.pack(padx=12, pady=10, fill="x")
+        # ---------- Yeni Ölçüm ----------
+        meas_frm = ttk.LabelFrame(self, text="Kan Şekeri Ölçümü")
+        meas_frm.pack(padx=12, pady=8, fill="x")
 
-        ttk.Label(frame, text="Değer (mg/dL):").grid(row=0, column=0, padx=6, pady=6)
-        self.val_entry = ttk.Entry(frame, width=10)
-        self.val_entry.grid(row=0, column=1, padx=6, pady=6)
+        ttk.Label(meas_frm, text="Değer (mg/dL):")\
+            .grid(row=0, column=0, padx=6, pady=6)
+        self.val_ent = ttk.Entry(meas_frm, width=10)
+        self.val_ent.grid(row=0, column=1, padx=6, pady=6)
 
-        ttk.Button(frame, text="Kaydet", command=self._save_reading)\
+        ttk.Button(meas_frm, text="Kaydet", command=self._save_glucose)\
             .grid(row=0, column=2, padx=6, pady=6)
 
-        # --- Diyet & Egzersiz girişi -------------------------
+        # ---------- Diyet & Egzersiz ----------
         st = ttk.LabelFrame(self, text="Diyet / Egzersiz")
-        st.pack(padx=12, fill="x")
+        st.pack(padx=12, pady=4, fill="x")
 
         ttk.Label(st, text="Diyet Türü:").grid(row=0, column=0, padx=4, pady=4, sticky="e")
         self.diet_cmb = ttk.Combobox(st, width=12, state="readonly",
@@ -53,63 +56,63 @@ class PatientWindow(tk.Toplevel):
         ttk.Button(st, text="Kaydet", command=self._save_status)\
             .grid(row=2, columnspan=3, pady=6)
 
+        # ---------- Günlük Özet ----------
+        self.sum_lbl = ttk.Label(self, text="", font=("Segoe UI", 10, "bold"))
+        self.sum_lbl.pack(pady=6)
 
-        # ---------- Günlük özet ----------
-        self.sum_lbl = ttk.Label(self, text="", font=("Segoe UI", 11, "bold"))
-        self.sum_lbl.pack(pady=8)
+        self.alert_box = tk.Text(self, height=6, state="disabled")
+        self.alert_box.pack(padx=10, fill="both", expand=True)
 
-        self.alerts_box = tk.Text(self, height=5, state="disabled")
-        self.alerts_box.pack(padx=10, fill="both", expand=True)
+        self._refresh()
 
-        self._refresh_summary()
-
-    # ----------------------------
-    def _save_reading(self):
+    # ------------------------------------------------------------------
+    def _save_glucose(self):
+        """Kan şekeri ölçümünü kaydeder."""
         try:
-            value = float(self.val_entry.get())
+            value = float(self.val_ent.get())
         except ValueError:
             messagebox.showerror("Hata", "Geçersiz sayı.")
             return
 
         add_glucose(self.patient_id, value)
-        self.val_entry.delete(0, tk.END)
-        self._refresh_summary()
+        self.val_ent.delete(0, tk.END)
+        self._refresh()
 
-    # ----------------------------
-    def _refresh_summary(self):
-        # ölçümleri listele
+    # ------------------------------------------------------------------
+    def _save_status(self):
+        """Günlük diyet & egzersiz durumunu kaydeder."""
+        upsert_status(
+            self.patient_id,
+            self.diet_cmb.get(),  self.diet_chk.get(),
+            self.ex_cmb.get(),    self.ex_chk.get()
+        )
+        messagebox.showinfo("Bilgi", "Günlük durum kaydedildi.")
+
+    # ------------------------------------------------------------------
+    def _refresh(self):
+        """Ölçüm özetini ve uyarıları yeniler."""
         readings = list_today(self.patient_id)
         if readings:
             avg = sum(r["value_mg_dl"] for r in readings) / len(readings)
-            self.sum_lbl.config(text=f"Bugünkü ölçüm sayısı: {len(readings)}  •  Ortalama: {avg:.1f} mg/dL")
+            self.sum_lbl.config(text=f"{len(readings)} ölçüm  •  Ortalama {avg:.1f}")
         else:
-            self.sum_lbl.config(text="Bugün henüz ölçüm yok.")
+            self.sum_lbl.config(text="Bugün ölçüm yok.")
 
-        # günlük evaluate → doz & gerekirse alert
-        evaluate_day(self.patient_id, day=date.today())
+        # Doz & uyarı hesapla
+        evaluate_day(self.patient_id, date.today())
 
-        # son uyarıları getir
-        from utils.db import db_cursor
+        # Son 5 uyarıyı getir
         with db_cursor() as cur:
             cur.execute(
                 "SELECT created_dt, message FROM alerts "
                 "WHERE patient_id=%s ORDER BY created_dt DESC LIMIT 5",
-                (self.patient_id,)
+                (self.patient_id,),
             )
             alerts = cur.fetchall()
 
-        self.alerts_box.configure(state="normal")
-        self.alerts_box.delete("1.0", tk.END)
+        self.alert_box.configure(state="normal")
+        self.alert_box.delete("1.0", tk.END)
         for a in alerts:
-            self.alerts_box.insert(tk.END, f"{a['created_dt'].strftime('%H:%M')} - {a['message']}\n")
-        self.alerts_box.configure(state="disabled")
-
-        # ------------------------- Diyet/egzersiz kaydet
-        def _save_status(self):
-            upsert_status(
-                self.patient_id,
-                self.diet_cmb.get(), self.diet_chk.get(),
-                self.ex_cmb.get(), self.ex_chk.get()
-            )
-            messagebox.showinfo("Bilgi", "Günlük durum kaydedildi.")
-
+            t = a["created_dt"].strftime("%H:%M")
+            self.alert_box.insert(tk.END, f"{t}  {a['message']}\n")
+        self.alert_box.configure(state="disabled")

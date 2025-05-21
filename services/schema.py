@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS alerts (
   is_read      BOOL DEFAULT 0,
   FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
 /* -------------- DAILY STATUS -------------- */
 CREATE TABLE IF NOT EXISTS daily_status (
   id            INT AUTO_INCREMENT PRIMARY KEY,
