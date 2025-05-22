@@ -142,18 +142,22 @@ class AddPatientDialog(tk.Toplevel):
                     "E-posta ayarları yapılandırılmadığı için e-posta gönderilmedi."
                 )
             
-            ttk.dialogs.Messagebox.show_info(
-                message,
-                "Kayıt Başarılı"
-            )
-            
-            # Önce dialog'u kapat, sonra yenile
-            # Callback'i sakla çünkü destroy'dan sonra self erişilemez olacak
+            # Callback'i ve mesajı sakla çünkü destroy'dan sonra self erişilemez olacak
             refresh_callback = self.on_added
+            success_message = message
+            master = self.master
+            
+            # Dialog'u hemen kapat
             self.destroy()
             
-            # Pencere kapandıktan sonra ana pencereyi yenile (100ms beklet)
-            self.master.after(100, refresh_callback)
+            # Pencere kapandıktan sonra bilgi mesajını göster ve ana pencereyi yenile
+            master.after(100, lambda: (
+                ttk.dialogs.Messagebox.show_info(
+                    success_message,
+                    "Kayıt Başarılı"
+                ),
+                refresh_callback()
+            ))
             
         except Exception as e:
             error_message = f"Hasta eklenemedi:\n{str(e)}"

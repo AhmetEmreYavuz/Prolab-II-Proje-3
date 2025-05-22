@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash CHAR(60)      NOT NULL,
   role          ENUM('doctor','patient') NOT NULL,
   birth_date    DATE,
-  gender        ENUM('F','M','O')
+  gender        ENUM('F','M','O'),
+  password_change_needed TINYINT(1) DEFAULT 0
 ) ENGINE=InnoDB;
 
 /* -------------- PATIENTS -------------- */
@@ -56,6 +57,17 @@ CREATE TABLE IF NOT EXISTS alerts (
   message      TEXT,
   is_read      BOOL DEFAULT 0,
   FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+/* -------------- SYMPTOMS -------------- */
+CREATE TABLE IF NOT EXISTS symptoms (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  patient_id  INT NOT NULL,
+  noted_at    DATETIME NOT NULL,
+  description TEXT NOT NULL,
+  severity    VARCHAR(50),
+  FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+  INDEX idx_patient_dt (patient_id, noted_at)
 ) ENGINE=InnoDB;
 
 /* -------------- DAILY STATUS -------------- */

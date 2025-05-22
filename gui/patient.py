@@ -19,10 +19,36 @@ class PatientWindow(tk.Toplevel):
         self.configure(bg="#2b3e50")  # Superhero temasına uygun arka plan
         
         # Hasta bilgisini getir
-        with db_cursor() as cur:
-            cur.execute("SELECT full_name FROM users WHERE id=%s", (patient_id,))
-            user_data = cur.fetchone()
-            self.patient_name = user_data["full_name"] if user_data else "Hasta"
+        try:
+            with db_cursor() as cur:
+                # İlk olarak sadece basic bilgileri güvenli şekilde çek
+                cur.execute("SELECT full_name FROM users WHERE id=%s", (patient_id,))
+                user_data = cur.fetchone()
+                self.patient_name = user_data["full_name"] if user_data else "Hasta"
+                
+                # Şimdi şifre değişikliği gereklilik kontrolü yap
+                try:
+                    cur.execute("SELECT password_change_needed FROM users WHERE id=%s", (patient_id,))
+                    result = cur.fetchone()
+                    password_change_needed = result.get("password_change_needed", 0) if result else 0
+                    
+                    if password_change_needed:
+                        # İlk giriş için şifre değiştirme penceresi göster
+                        from gui.change_password import ChangePasswordDialog
+                        self.after(100, lambda: ChangePasswordDialog(self, patient_id, is_first_login=True))
+                        
+                        # Şifre değiştirildiğinde bayrağı güncelle
+                        with db_cursor() as update_cur:
+                            update_cur.execute(
+                                "UPDATE users SET password_change_needed = 0 WHERE id=%s",
+                                (patient_id,)
+                            )
+                except Exception as e:
+                    print(f"Şifre değişikliği kontrolü yapılamadı: {str(e)}")
+                    # Hata olursa devam et, kritik bir işlem değil
+        except Exception as e:
+            print(f"Hasta bilgileri yüklenirken hata: {str(e)}")
+            self.patient_name = "Hasta"
         
         # Ana başlık
         header_frame = ttk.Frame(self, bootstyle="dark")
@@ -268,6 +294,15 @@ class PatientWindow(tk.Toplevel):
         footer_frame = ttk.Frame(self)
         footer_frame.pack(fill="x", padx=20, pady=15)
         
+        # Şifre değiştir butonu
+        ttk.Button(
+            footer_frame, 
+            text="Şifre Değiştir", 
+            command=self._change_password,
+            bootstyle="info",
+            width=15
+        ).pack(side="left", padx=(0, 10))
+        
         ttk.Button(
             footer_frame, 
             text="Yenile", 
@@ -383,3 +418,16 @@ class PatientWindow(tk.Toplevel):
             t = a["created_dt"].strftime("%H:%M")
             self.alert_box.insert(tk.END, f"{t}  {a['message']}\n")
         self.alert_box.configure(state="disabled")
+
+    # ------------------------------------------------------------------
+    def _change_password(self):
+        """Şifre değiştirme penceresini açar."""
+        try:
+            from gui.change_password import ChangePasswordDialog
+            ChangePasswordDialog(self, self.patient_id)
+        except Exception as e:
+            print(f"Şifre değiştirme penceresi açılamadı: {str(e)}")
+            ttk.dialogs.Messagebox.show_error(
+                "Şifre değiştirme işlemi şu anda gerçekleştirilemiyor.",
+                "Hata"
+            )

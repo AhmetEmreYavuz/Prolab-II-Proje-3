@@ -167,13 +167,22 @@ class DoctorWindow(tk.Toplevel):
         btn2.pack(side="right", padx=(10, 0), fill="x", expand=True)
         
         # Responsive butonlar - İkinci satır
-        btn3 = ttk.Button(                                   
+        btn3 = ttk.Button(                                    
             btn_row2, 
             text="Günlük Durum Göster",
             bootstyle="warning",
             command=self._show_status
         )
         btn3.pack(side="left", padx=(0, 10), fill="x", expand=True)
+        
+        # Semptom ekle butonu
+        btn_sym = ttk.Button(
+            btn_row2,
+            text="Belirti Ekle",
+            bootstyle="success",
+            command=self._add_symptom
+        )
+        btn_sym.pack(side="left", padx=(0, 10), fill="x", expand=True)
         
         btn4 = ttk.Button(
             btn_row2,
@@ -183,6 +192,23 @@ class DoctorWindow(tk.Toplevel):
         )
         btn4.pack(side="right", padx=(10, 0), fill="x", expand=True)
         
+        # Üçüncü satırda geçmiş ve analiz butonları
+        btn_hist = ttk.Button(
+            btn_row3,
+            text="Glukoz Geçmişi",
+            bootstyle="info",
+            command=self._show_history
+        )
+        btn_hist.pack(side="left", padx=(0, 10), fill="x", expand=True)
+
+        btn_analysis = ttk.Button(
+            btn_row3,
+            text="Analiz",
+            bootstyle="primary",
+            command=self._show_analysis
+        )
+        btn_analysis.pack(side="right", padx=(10,0), fill="x", expand=True)
+
         # E-posta ayarları butonu - Üçüncü satır
         email_settings_btn = ttk.Button(
             btn_row3,
@@ -216,6 +242,16 @@ class DoctorWindow(tk.Toplevel):
         # Arama çubuğu değişikliklerini dinle
         self.search_var.trace("w", lambda name, index, mode: self._filter_patients())
 
+    # -------------------------------- helper -----------------------------
+    def _msg(self, kind: str, message: str, title: str):
+        import tkinter.messagebox as mbox
+        if kind == 'info':
+            mbox.showinfo(title, message, parent=self)
+        elif kind == 'warning':
+            mbox.showwarning(title, message, parent=self)
+        else:
+            mbox.showerror(title, message, parent=self)
+
     # ------------------------------------------------------------
     def _refresh(self):
         """Hasta listesini yeniler."""
@@ -227,10 +263,10 @@ class DoctorWindow(tk.Toplevel):
                 SELECT u.id, u.tc_no, u.full_name
                 FROM patients p
                 JOIN users    u ON p.id = u.id
-                WHERE p.doctor_id = %s
+                WHERE p.doctor_id = %s AND u.role='patient' AND u.id <> %s
                 ORDER BY u.full_name
                 """,
-                (self.doctor_id,)
+                (self.doctor_id, self.doctor_id)
             )
             rows = cur.fetchall()
 
@@ -254,26 +290,22 @@ class DoctorWindow(tk.Toplevel):
                 text="Bu doktora bağlı hasta yok.",
                 bootstyle="warning"
             )
-            ttk.dialogs.Messagebox.show_info(
-                "Bu doktora bağlı hasta bulunmamaktadır.",
-                "Bilgi"
-            )
+            self._msg('info', "Bu doktora bağlı hasta bulunmamaktadır.", "Bilgi")
     
     # ------------------------------------------------------------
     def _filter_patients(self, *args):
         """Arama kutusuna göre hasta listesini filtreler."""
         search_term = self.search_var.get().lower().strip()
         
-        # Tüm hastaları getir
         with db_cursor() as cur:
             cur.execute(
                 """
                 SELECT u.id, u.tc_no, u.full_name
                 FROM patients p
                 JOIN users u ON p.id = u.id
-                WHERE p.doctor_id = %s
+                WHERE p.doctor_id = %s AND u.role='patient' AND u.id <> %s
                 """,
-                (self.doctor_id,)
+                (self.doctor_id, self.doctor_id)
             )
             all_patients = cur.fetchall()
         
@@ -310,10 +342,7 @@ class DoctorWindow(tk.Toplevel):
         """Seçili hastayı Hasta Paneli olarak aç."""
         sel = self.tree.selection()
         if not sel:
-            ttk.dialogs.Messagebox.show_warning(
-                "Lütfen bir hasta seçin.",
-                "Uyarı"
-            )
+            self._msg('warning', "Lütfen bir hasta seçin.", "Uyarı")
             return
         patient_id = int(sel[0])          # item id = hasta id
         PatientWindow(self, patient_id)
@@ -339,10 +368,7 @@ class DoctorWindow(tk.Toplevel):
         """Seçili hastanın diyet / egzersiz geçmişini gösterir."""
         sel = self.tree.selection()
         if not sel:
-            ttk.dialogs.Messagebox.show_warning(
-                "Lütfen bir hasta seçin.",
-                "Uyarı"
-            )
+            self._msg('warning', "Lütfen bir hasta seçin.", "Uyarı")
             return
         patient_id = int(sel[0])
         full_name  = self.tree.item(sel[0], "values")[1]
@@ -352,3 +378,36 @@ class DoctorWindow(tk.Toplevel):
     def _open_email_settings(self):
         """E-posta ayarları penceresini açar."""
         EmailSettingsDialog(self)
+
+    # ------------------------------------------------------------
+    def _add_symptom(self):
+        """Seçilen hasta için semptom ekleme dialogu."""
+        sel = self.tree.selection()
+        if not sel:
+            self._msg('warning', "Lütfen bir hasta seçin.", "Uyarı")
+            return
+        patient_id = int(sel[0])
+        from gui.add_symptom import AddSymptomDialog
+        AddSymptomDialog(self, patient_id)
+
+    # ------------------------------------------------------------
+    def _show_history(self):
+        sel = self.tree.selection()
+        if not sel:
+            self._msg('warning', "Lütfen bir hasta seçin.", "Uyarı")
+            return
+        patient_id = int(sel[0])
+        full_name  = self.tree.item(sel[0], "values")[1]
+        from gui.glucose_history import GlucoseHistoryWindow
+        GlucoseHistoryWindow(self, patient_id, full_name)
+
+    # ------------------------------------------------------------
+    def _show_analysis(self):
+        sel = self.tree.selection()
+        if not sel:
+            self._msg('warning', "Lütfen bir hasta seçin.", "Uyarı")
+            return
+        patient_id = int(sel[0])
+        full_name  = self.tree.item(sel[0], "values")[1]
+        from gui.analysis import AnalysisWindow
+        AnalysisWindow(self, patient_id, full_name)

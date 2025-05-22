@@ -28,8 +28,8 @@ def register_patient(tc_no: str, full_name: str, email: str,
         # users
         cur.execute(
             "INSERT INTO users "
-            "(tc_no, full_name, email, password_hash, role, birth_date, gender) "
-            "VALUES (%s,%s,%s,%s,'patient',%s,%s)",
+            "(tc_no, full_name, email, password_hash, role, birth_date, gender, password_change_needed) "
+            "VALUES (%s,%s,%s,%s,'patient',%s,%s,1)",
             (tc_no, full_name, email, hash_password(plain_pw), birth_date, gender)
         )
         uid = cur.lastrowid

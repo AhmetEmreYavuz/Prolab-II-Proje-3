@@ -68,29 +68,65 @@ def main():
 
 def show_login(root):
     """Login penceresini gösterir ve sonucu işler"""
-    dlg = LoginDialog(root)
-    root.wait_window(dlg)
+    try:
+        dlg = LoginDialog(root)
+        root.wait_window(dlg)
 
-    if not dlg.result:
-        return           # giriş başarısız veya iptal
+        if not dlg.result:
+            return           # giriş başarısız veya iptal
 
-    uid, role = dlg.result["user_id"], dlg.result["role"]
+        uid, role = dlg.result["user_id"], dlg.result["role"]
 
-    # Ana pencereyi gizle (kapat değil)
-    root.withdraw()
+        # Ana pencereyi gizle (kapat değil)
+        root.withdraw()
+        # Enter tuşu ile giriş kısayolunu devre dışı bırak
+        try:
+            root.unbind("<Return>")
+        except:
+            pass  # binding yoksa hata vermesin
 
-    if role == "patient":
-        # Hasta penceresini aç
-        patient_window = PatientWindow(root, uid)
-        # Hasta penceresi kapanınca ana pencereyi tekrar göster
-        patient_window.protocol("WM_DELETE_WINDOW", 
-                            lambda: (patient_window.destroy(), root.deiconify()))
-    elif role == "doctor":
-        # Doktor penceresini aç
-        doctor_window = DoctorWindow(root, uid)
-        # Doktor penceresi kapanınca ana pencereyi tekrar göster
-        doctor_window.protocol("WM_DELETE_WINDOW", 
-                           lambda: (doctor_window.destroy(), root.deiconify()))
+        # Yardımcı: Alt pencere kapandığında ana pencereyi göster ve Enter kısayolunu geri yükle
+        def _on_child_close(child):
+            child.destroy()
+            root.deiconify()
+            # Ana pencere yeniden görünür olduğunda Enter kısayolunu tekrar ekle
+            try:
+                root.bind("<Return>", lambda event: show_login(root))
+            except:
+                pass  # binding eklenemezse hata vermesin
+
+        if role == "patient":
+            try:
+                # Hasta penceresini aç
+                patient_window = PatientWindow(root, uid)
+                # Hasta penceresi kapanınca ana pencereyi tekrar göster
+                patient_window.protocol("WM_DELETE_WINDOW", lambda: _on_child_close(patient_window))
+            except Exception as e:
+                print(f"Hasta penceresi açılamadı: {str(e)}")
+                root.deiconify()  # Ana pencereyi tekrar göster
+                ttk.dialogs.Messagebox.show_error(
+                    f"Hasta penceresi açılamadı: {str(e)}",
+                    "Hata"
+                )
+        elif role == "doctor":
+            try:
+                # Doktor penceresini aç
+                doctor_window = DoctorWindow(root, uid)
+                # Doktor penceresi kapanınca ana pencereyi tekrar göster
+                doctor_window.protocol("WM_DELETE_WINDOW", lambda: _on_child_close(doctor_window))
+            except Exception as e:
+                print(f"Doktor penceresi açılamadı: {str(e)}")
+                root.deiconify()  # Ana pencereyi tekrar göster
+                ttk.dialogs.Messagebox.show_error(
+                    f"Doktor penceresi açılamadı: {str(e)}",
+                    "Hata"
+                )
+    except Exception as e:
+        print(f"Giriş işlemi sırasında hata: {str(e)}")
+        ttk.dialogs.Messagebox.show_error(
+            "Beklenmeyen bir hata oluştu.",
+            "Hata"
+        )
 
 
 if __name__ == "__main__":

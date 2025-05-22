@@ -8,12 +8,13 @@ from datetime import date, datetime
 from utils.db import db_cursor
 
 # ---- Sabitler ----
+# (type, lo, hi, insulin_dose, diet, exercise)
 LEVELS = [
-    ("hypo",        0,   69.9, 0),  # < 70  → acil uyarı
-    ("normal",     70,  110.0, 0),
-    ("mid_high",  111,  150.0, 1),
-    ("high",      151,  200.0, 2),
-    ("very_high", 201, 9999.0, 3),  # > 200 → acil uyarı
+    ("hypo",        0,   69.9, 0, "yüksek_karb", "dinlen"),
+    ("normal",     70,  110.0, 0, "balanced",    "yürüyüş"),
+    ("mid_high",  111,  150.0, 1, "low_sugar",   "bisiklet"),
+    ("high",      151,  200.0, 2, "sugar_free", "egzersiz"),
+    ("very_high", 201, 9999.0, 3, "sugar_free", "klinik"),
 ]
 
 
@@ -61,9 +62,12 @@ def evaluate_day(patient_id: int, day: date | None = None):
                 f"{day} tarihinde yalnızca {len(readings)} ölçüm girildi.",
             )
 
-        # 2) Ortalama & doz
+        # 2) Ortalama & doz ve öneriler
         avg = sum(readings) / len(readings)
-        dose = next(d for _, lo, hi, d in LEVELS if lo <= avg <= hi)
+        level = next(t for t in LEVELS if t[1] <= avg <= t[2])
+        dose = level[3]
+        diet_sug = level[4]
+        ex_sug   = level[5]
 
         # insulin_suggestions upsert
         cur.execute(
@@ -76,6 +80,14 @@ def evaluate_day(patient_id: int, day: date | None = None):
                 dose_ml     = VALUES(dose_ml)
             """,
             (patient_id, day, avg, dose),
+        )
+
+        # Diyet & egzersiz önerisi alert
+        _insert_alert(
+            cur,
+            patient_id,
+            "info",
+            f"{day} ort. {avg:.1f} mg/dL → Diyet: {diet_sug}, Egzersiz: {ex_sug}"
         )
 
         # 3) Kritik eşiklere bak → acil uyarı
