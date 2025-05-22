@@ -13,9 +13,10 @@ def _gen_pass(k: int = 10) -> str:
 
 def register_patient(tc_no: str, full_name: str, email: str,
                      birth_date: str, gender: str,
-                     doctor_id: int) -> tuple[int, str]:
+                     doctor_id: int, profile_image=None) -> tuple[int, str]:
     """
     Yeni hastayı (users + patients) ekler.
+    :param profile_image: Profil resmi (binary veri)
     :returns: (user_id, plain_password)
     """
     plain_pw = _gen_pass()
@@ -35,6 +36,12 @@ def register_patient(tc_no: str, full_name: str, email: str,
         uid = cur.lastrowid
         
         # patients
+        if profile_image:
+            cur.execute(
+                "INSERT INTO patients (id, doctor_id, profile_img) VALUES (%s,%s,%s)",
+                (uid, doctor_id, profile_image)
+            )
+        else:
         cur.execute(
             "INSERT INTO patients (id, doctor_id) VALUES (%s,%s)",
             (uid, doctor_id)
@@ -66,3 +73,23 @@ def register_patient(tc_no: str, full_name: str, email: str,
             cur.close()
         if conn:
             conn.close()
+
+
+def get_profile_image(patient_id: int):
+    """Hastanın profil resmini döndürür (veya None)."""
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT profile_img FROM patients WHERE id=%s",
+            (patient_id,)
+        )
+        result = cur.fetchone()
+        return result["profile_img"] if result and "profile_img" in result else None
+
+
+def update_profile_image(patient_id: int, profile_image):
+    """Hastanın profil resmini günceller."""
+    with db_cursor() as cur:
+        cur.execute(
+            "UPDATE patients SET profile_img=%s WHERE id=%s",
+            (profile_image, patient_id)
+        )

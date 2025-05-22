@@ -2,6 +2,10 @@
 import tkinter as tk
 import ttkbootstrap as ttk
 from services.patient import register_patient
+from tkinter import filedialog
+from PIL import Image, ImageTk
+import io
+import base64
 
 
 class AddPatientDialog(tk.Toplevel):
@@ -11,6 +15,8 @@ class AddPatientDialog(tk.Toplevel):
         self.resizable(False, False)
         self.doctor_id = doctor_id
         self.on_added = on_added   # callback tabloyu yenilemek için
+        self.profile_image = None  # Seçilen resim verisini saklar
+        self.image_path = None     # Seçilen dosya yolunu saklar
 
         # Ana frame
         main_frame = ttk.Frame(self, padding=15)
@@ -23,9 +29,13 @@ class AddPatientDialog(tk.Toplevel):
             font=("Segoe UI", 14, "bold")
         ).pack(pady=(0, 15))
 
-        # Form alanları
-        form_frame = ttk.Frame(main_frame)
-        form_frame.pack(fill="x", pady=5)
+        # İki sütunlu layout
+        content_frame = ttk.Frame(main_frame)
+        content_frame.pack(fill="both", expand=True)
+        
+        # Sol sütun - Form alanları
+        form_frame = ttk.Frame(content_frame)
+        form_frame.pack(side="left", fill="x", pady=5, padx=(0, 10))
         
         fields = [
             ("TC No:", "tc"),
@@ -64,11 +74,40 @@ class AddPatientDialog(tk.Toplevel):
         )
         gender_combo.grid(row=len(fields), column=1, sticky="w", padx=6, pady=6)
         
+        # Sağ sütun - Profil resmi
+        image_frame = ttk.LabelFrame(content_frame, text="Profil Resmi", padding=10)
+        image_frame.pack(side="right", fill="both", pady=5)
+        
+        # Varsayılan resim placeholder
+        self.img_label = ttk.Label(
+            image_frame, 
+            text="Resim Seçilmedi",
+            width=20,
+            height=10
+        )
+        self.img_label.pack(padx=10, pady=10)
+        
+        # Resim seçme butonu
+        ttk.Button(
+            image_frame,
+            text="Resim Seç",
+            command=self._select_image
+        ).pack(fill="x", padx=10, pady=(0, 10))
+        
+        # Bilgi metni
+        ttk.Label(
+            image_frame,
+            text="En fazla 2MB boyutunda\n.jpg veya .png formatında\nkare/portre resim önerilir",
+            font=("Segoe UI", 9),
+            justify="left",
+            bootstyle="secondary"
+        ).pack(padx=10)
+        
         # Bilgi etiketi
         self.info_label = ttk.Label(
             main_frame,
             text="Hasta kaydının ardından otomatik oluşturulan şifre e-posta adresine gönderilecektir.",
-            wraplength=350,
+            wraplength=450,
             justify="left",
             font=("Segoe UI", 9),
             bootstyle="secondary"
@@ -96,6 +135,52 @@ class AddPatientDialog(tk.Toplevel):
         ).pack(side="right", padx=(5, 0))
 
     # ---------------------------------
+    def _select_image(self):
+        """Profil resmi seçme işlemi"""
+        file_types = [
+            ("Resim Dosyaları", "*.jpg *.jpeg *.png"),
+            ("JPEG", "*.jpg *.jpeg"),
+            ("PNG", "*.png"),
+            ("Tüm Dosyalar", "*.*")
+        ]
+        
+        file_path = filedialog.askopenfilename(
+            title="Profil Resmi Seç",
+            filetypes=file_types
+        )
+        
+        if not file_path:
+            return  # Kullanıcı iptal etti
+        
+        try:
+            # Resmi aç ve küçültülmüş thumbnail oluştur
+            with Image.open(file_path) as img:
+                # Resmi makul bir boyuta küçült
+                img.thumbnail((200, 200))
+                
+                # Resmi önizleme için göster
+                photo_image = ImageTk.PhotoImage(img)
+                self.img_label.config(image=photo_image, text="")
+                self.img_label.image = photo_image  # Referans tutmak için
+                
+                # Resmi binary olarak sakla
+                with io.BytesIO() as buffer:
+                    if file_path.lower().endswith(".png"):
+                        img.save(buffer, format="PNG")
+                    else:
+                        img.save(buffer, format="JPEG", quality=80)
+                    
+                    self.profile_image = buffer.getvalue()
+                
+                self.image_path = file_path
+                
+        except Exception as e:
+            ttk.dialogs.Messagebox.show_error(
+                f"Resim yüklenemedi: {str(e)}",
+                "Resim Hatası"
+            )
+
+    # ---------------------------------
     def _save(self):
         # Alanları kontrol et
         tc = self.entries["tc"].get().strip()
@@ -121,6 +206,7 @@ class AddPatientDialog(tk.Toplevel):
                 dob or None,
                 self.gender.get(),
                 self.doctor_id,
+                self.profile_image
             )
             print(f"Patient registered successfully with ID: {uid}")
             

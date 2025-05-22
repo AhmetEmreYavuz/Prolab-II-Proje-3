@@ -5,7 +5,10 @@ from datetime import date
 from services.glucose import add_glucose, list_today
 from services.daily import upsert_status
 from services.rules import evaluate_day
+from services.patient import get_profile_image
 from utils.db import db_cursor
+from PIL import Image, ImageTk
+import io
 
 
 class PatientWindow(tk.Toplevel):
@@ -54,13 +57,28 @@ class PatientWindow(tk.Toplevel):
         header_frame = ttk.Frame(self, bootstyle="dark")
         header_frame.pack(fill="x", pady=(0, 15))
         
+        # Başlık ve profil resmi için üst kısım
+        top_frame = ttk.Frame(header_frame)
+        top_frame.pack(fill="x", padx=10, pady=10)
+        
+        # Profil resmi
+        self.profile_frame = ttk.Frame(top_frame, width=80, height=80)
+        self.profile_frame.pack(side="left", padx=(5, 15))
+        self.profile_frame.pack_propagate(False)  # Boyutu sabit tut
+        
+        self.profile_image_lbl = ttk.Label(self.profile_frame)
+        self.profile_image_lbl.pack(fill="both", expand=True)
+        
+        # Profil resmini yükle
+        self._load_profile_image()
+        
+        # Hoş geldin yazısı
         ttk.Label(
-            header_frame,
+            top_frame,
             text=f"Hoş Geldiniz, {self.patient_name}",
             font=("Segoe UI", 16, "bold"),
-            bootstyle="inverse-light",
-            padding=10
-        ).pack(fill="x")
+            bootstyle="inverse-light"
+        ).pack(side="left", pady=10)
         
         # Ana içerik container
         content_frame = ttk.Frame(self)
@@ -248,109 +266,102 @@ class PatientWindow(tk.Toplevel):
             bootstyle="round-toggle"
         ).pack(side="left")
         
-        # Kaydet butonu
-        save_frame = ttk.Frame(right_frame)
-        save_frame.pack(fill="x", pady=15)
+        # Kaydetme butonu
+        save_frm = ttk.Frame(right_frame)
+        save_frm.pack(fill="x", pady=(20, 0))
         
         ttk.Button(
-            save_frame, 
-            text="Günlük Durumu Kaydet", 
+            save_frm,
+            text="Kaydet",
             command=self._save_status,
-            bootstyle="warning",
-            width=25
-        ).pack(anchor="center")
+            bootstyle="success",
+            width=20
+        ).pack(side="right")
         
-        # ---------- Uyarılar ----------
-        alerts_frame = ttk.LabelFrame(
-            right_frame, 
-            text="Uyarılar ve Öneriler",
-            padding=10,
-            bootstyle="danger"
-        )
-        alerts_frame.pack(fill="both", expand=True, pady=(15, 0))
-        
-        self.alert_box = tk.Text(
-            alerts_frame, 
-            height=6, 
-            state="disabled",
-            font=("Segoe UI", 10),
-            bg="#3e5368",  # Koyu tema uyumlu
-            fg="#ffffff"   # Beyaz yazı
-        )
-        
-        # Scrollbar ekle
-        alert_scrollbar = ttk.Scrollbar(
-            alerts_frame, 
-            orient="vertical", 
-            command=self.alert_box.yview
-        )
-        self.alert_box.configure(yscrollcommand=alert_scrollbar.set)
-        
-        # Yerleştir
-        self.alert_box.pack(side="left", fill="both", expand=True)
-        alert_scrollbar.pack(side="right", fill="y")
-        
-        # Alt panel - Butonlar
+        # Footer
         footer_frame = ttk.Frame(self)
-        footer_frame.pack(fill="x", padx=20, pady=15)
+        footer_frame.pack(fill="x", pady=15)
         
-        # Şifre değiştir butonu
         ttk.Button(
-            footer_frame, 
-            text="Şifre Değiştir", 
+            footer_frame,
+            text="Şifre Değiştir",
             command=self._change_password,
             bootstyle="info",
             width=15
-        ).pack(side="left", padx=(0, 10))
+        ).pack(side="left", padx=20)
         
         ttk.Button(
-            footer_frame, 
-            text="Yenile", 
-            command=self._refresh,
-            bootstyle="secondary",
-            width=15
-        ).pack(side="left")
-        
-        ttk.Button(
-            footer_frame, 
-            text="Kapat", 
+            footer_frame,
+            text="Kapat",
             command=self.destroy,
             bootstyle="danger",
             width=15
-        ).pack(side="right")
-        
+        ).pack(side="right", padx=20)
+
+        # Verileri yükle
         self._refresh()
 
-    # ------------------------------------------------------------------
-    def _save_glucose(self):
-        """Kan şekeri ölçümünü kaydeder."""
+    # ---------- Helper Methods ----------
+    def _load_profile_image(self):
+        """Profil resmini yükler ve görüntüler."""
+        image_data = get_profile_image(self.patient_id)
+        
         try:
-            value = float(self.val_ent.get())
-        except ValueError:
+            if image_data:
+                # Binary datayı resme dönüştür
+                img = Image.open(io.BytesIO(image_data))
+                img.thumbnail((70, 70))  # Uygun boyuta küçült
+                
+                photo = ImageTk.PhotoImage(img)
+                self.profile_image_lbl.config(image=photo)
+                self.profile_image_lbl.image = photo
+            else:
+                # Varsayılan avatar göster
+                self.profile_image_lbl.config(
+                    text="👤", 
+                    font=("Segoe UI", 32),
+                    foreground="white"
+                )
+        except Exception as e:
+            print(f"Profil resmi yüklenirken hata: {str(e)}")
+            # Hata durumunda varsayılan avatar göster
+            self.profile_image_lbl.config(
+                text="👤", 
+                font=("Segoe UI", 32),
+                foreground="white"
+            )
+    
+    def _save_glucose(self):
+        """Yeni ölçümü kaydeder."""
+        try:
+            value = float(self.val_ent.get().strip().replace(',', '.'))
+            if value <= 0:
+                raise ValueError("Pozitif değer giriniz.")
+            
+            add_glucose(self.patient_id, value)
+            self.val_ent.delete(0, tk.END)
+            self._refresh()
+            
+        except ValueError as e:
             ttk.dialogs.Messagebox.show_error(
-                "Geçersiz sayı girdiniz.",
+                f"Geçersiz değer: {str(e)}",
                 "Hata"
             )
-            return
-
-        add_glucose(self.patient_id, value)
-        self.val_ent.delete(0, tk.END)
-        self._refresh()
-
-    # ------------------------------------------------------------------
+    
     def _save_status(self):
-        """Günlük diyet & egzersiz durumunu kaydeder."""
-        upsert_status(
-            self.patient_id,
-            self.diet_cmb.get(),  self.diet_chk.get(),
-            self.ex_cmb.get(),    self.ex_chk.get()
-        )
+        """Diyet ve egzersiz durumunu kaydeder."""
+        diet_type = self.diet_cmb.get()
+        diet_done = self.diet_chk.get()
+        
+        ex_type = self.ex_cmb.get()
+        ex_done = self.ex_chk.get()
+        
+        upsert_status(self.patient_id, diet_type, diet_done, ex_type, ex_done)
         ttk.dialogs.Messagebox.show_info(
-            "Günlük durum başarıyla kaydedildi.",
-            "Bilgi"
+            "Diyet ve egzersiz durumu kaydedildi.",
+            "Başarılı"
         )
-
-    # ------------------------------------------------------------------
+    
     def _refresh(self):
         """Ölçüm özetini ve uyarıları yeniler."""
         readings = list_today(self.patient_id)
@@ -402,32 +413,8 @@ class PatientWindow(tk.Toplevel):
 
         # Doz & uyarı hesapla
         evaluate_day(self.patient_id, date.today())
-
-        # Son 5 uyarıyı getir
-        with db_cursor() as cur:
-            cur.execute(
-                "SELECT created_dt, message FROM alerts "
-                "WHERE patient_id=%s ORDER BY created_dt DESC LIMIT 5",
-                (self.patient_id,),
-            )
-            alerts = cur.fetchall()
-
-        self.alert_box.configure(state="normal")
-        self.alert_box.delete("1.0", tk.END)
-        for a in alerts:
-            t = a["created_dt"].strftime("%H:%M")
-            self.alert_box.insert(tk.END, f"{t}  {a['message']}\n")
-        self.alert_box.configure(state="disabled")
-
-    # ------------------------------------------------------------------
+    
     def _change_password(self):
-        """Şifre değiştirme penceresini açar."""
-        try:
-            from gui.change_password import ChangePasswordDialog
-            ChangePasswordDialog(self, self.patient_id)
-        except Exception as e:
-            print(f"Şifre değiştirme penceresi açılamadı: {str(e)}")
-            ttk.dialogs.Messagebox.show_error(
-                "Şifre değiştirme işlemi şu anda gerçekleştirilemiyor.",
-                "Hata"
-            )
+        """Şifre değiştirme penceresini aç."""
+        from gui.change_password import ChangePasswordDialog
+        ChangePasswordDialog(self, self.patient_id)
