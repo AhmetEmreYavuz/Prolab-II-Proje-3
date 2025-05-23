@@ -42,10 +42,10 @@ def register_patient(tc_no: str, full_name: str, email: str,
                 (uid, doctor_id, profile_image)
             )
         else:
-        cur.execute(
-            "INSERT INTO patients (id, doctor_id) VALUES (%s,%s)",
-            (uid, doctor_id)
-        )
+            cur.execute(
+                "INSERT INTO patients (id, doctor_id) VALUES (%s,%s)",
+                (uid, doctor_id)
+            )
         
         # Explicitly commit the transaction
         conn.commit()
