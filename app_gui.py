@@ -7,125 +7,161 @@ from gui.doctor import DoctorWindow
 
 
 def main():
-    # Modern bootstrap temalı ana pencere
+    # Bootstrap temalı ana pencere
     root = ttk.Window(
-        themename="superhero",  # Modern koyu tema
-        title="Diyabet Takip Sistemi",
-        size=(1024, 768),
-        position=(100, 50),
+        themename="superhero",
+        title="💊 Diyabet Takip Sistemi",
+        size=(1000, 700),
+        position=(150, 100),
         minsize=(800, 600)
     )
     
-    # Ana pencere içeriği (logo veya başlık gösterilebilir)
-    main_frame = ttk.Frame(root)
-    main_frame.pack(expand=True, fill="both", padx=20, pady=20)
+    # Ana container
+    main_container = ttk.Frame(root, padding=40)
+    main_container.pack(fill="both", expand=True)
     
-    # Başlık ve açıklama
-    ttk.Label(
-        main_frame, 
-        text="Diyabet Takip Sistemi", 
-        font=("Segoe UI", 24, "bold")
-    ).pack(pady=(100, 10))
+    # Başlık bölümü
+    header_frame = ttk.Frame(main_container)
+    header_frame.pack(fill="x", pady=(0, 40))
     
-    ttk.Label(
-        main_frame,
-        text="Sağlıklı yaşam için dijital çözüm",
-        font=("Segoe UI", 14)
-    ).pack(pady=(0, 50))
-    
-    # Giriş butonunu göster
-    login_button = ttk.Button(
-        main_frame,
-        text="Giriş Yap",
-        style="primary.TButton",
-        width=20,
-        command=lambda: show_login(root)
+    # Ana başlık
+    title_label = ttk.Label(
+        header_frame,
+        text="💊 Diyabet Takip Sistemi",
+        font=("Segoe UI", 28, "bold"),
+        bootstyle="primary"
     )
-    login_button.pack(pady=20)
+    title_label.pack()
+    
+    # Alt başlık
+    subtitle_label = ttk.Label(
+        header_frame,
+        text="Sağlıklı yaşam için akıllı dijital çözüm",
+        font=("Segoe UI", 14),
+        bootstyle="secondary"
+    )
+    subtitle_label.pack(pady=(10, 0))
+    
+    # Özellik kartları
+    features_frame = ttk.Frame(main_container)
+    features_frame.pack(fill="x", pady=(0, 40))
+    
+    # Üç sütunlu layout
+    for i in range(3):
+        features_frame.columnconfigure(i, weight=1)
+    
+    # Özellik bilgileri
+    features = [
+        ("📊", "Glukoz Takibi", "Kan şekeri değerlerinizi kaydedin ve analiz edin"),
+        ("🍎", "Diyet Planı", "Kişiselleştirilmiş beslenme önerileri alın"),
+        ("🏃", "Egzersiz Takibi", "Aktivitelerinizi planlayın ve takip edin")
+    ]
+    
+    for i, (icon, title, desc) in enumerate(features):
+        # Feature card
+        card_frame = ttk.LabelFrame(
+            features_frame,
+            text=f"{icon} {title}",
+            padding=20,
+            bootstyle="info"
+        )
+        card_frame.grid(row=0, column=i, padx=10, sticky="ew")
+        
+        # Description
+        ttk.Label(
+            card_frame,
+            text=desc,
+            font=("Segoe UI", 10),
+            wraplength=200,
+            justify="center"
+        ).pack()
+    
+    # Buton bölümü
+    button_frame = ttk.Frame(main_container)
+    button_frame.pack(expand=True)
+    
+    # Giriş butonu
+    login_btn = ttk.Button(
+        button_frame,
+        text="🔓 Sisteme Giriş Yap",
+        command=lambda: show_login(root),
+        bootstyle="success-outline",
+        width=25
+    )
+    login_btn.pack(pady=10)
     
     # Çıkış butonu
-    exit_button = ttk.Button(
-        main_frame,
-        text="Çıkış",
-        style="danger.TButton",
-        width=20,
-        command=root.destroy
+    exit_btn = ttk.Button(
+        button_frame,
+        text="❌ Çıkış",
+        command=root.destroy,
+        bootstyle="danger-outline",
+        width=25
     )
-    exit_button.pack(pady=10)
+    exit_btn.pack(pady=10)
     
-    # Footer bilgisi
+    # Alt bilgi
+    footer_frame = ttk.Frame(main_container)
+    footer_frame.pack(side="bottom", fill="x")
+    
     ttk.Label(
-        main_frame,
-        text="© 2023 Diyabet Takip Sistemi - Tüm Hakları Saklıdır",
-        font=("Segoe UI", 9)
-    ).pack(side="bottom", pady=20)
+        footer_frame,
+        text="© 2025 Diyabet Takip Sistemi - Tüm Hakları Saklıdır",
+        font=("Segoe UI", 9),
+        bootstyle="secondary",
+        anchor="center"
+    ).pack()
     
-    # Enter tuşu ile giriş yapma
+    # Enter tuşu bağlama
     root.bind("<Return>", lambda event: show_login(root))
     
     root.mainloop()
 
 
 def show_login(root):
-    """Login penceresini gösterir ve sonucu işler"""
+    """Giriş dialog'unu göster."""
     try:
         dlg = LoginDialog(root)
         root.wait_window(dlg)
 
         if not dlg.result:
-            return           # giriş başarısız veya iptal
+            return
 
         uid, role = dlg.result["user_id"], dlg.result["role"]
+        open_user_panel(root, uid, role)
+        
+    except Exception as e:
+        print(f"Login error: {str(e)}")
+        ttk.dialogs.Messagebox.show_error(
+            "Giriş işlemi sırasında hata oluştu.",
+            "Hata",
+            parent=root
+        )
 
-        # Ana pencereyi gizle (kapat değil)
-        root.withdraw()
-        # Enter tuşu ile giriş kısayolunu devre dışı bırak
-        try:
-            root.unbind("<Return>")
-        except:
-            pass  # binding yoksa hata vermesin
 
-        # Yardımcı: Alt pencere kapandığında ana pencereyi göster ve Enter kısayolunu geri yükle
-        def _on_child_close(child):
-            child.destroy()
-            root.deiconify()
-            # Ana pencere yeniden görünür olduğunda Enter kısayolunu tekrar ekle
-            try:
-                root.bind("<Return>", lambda event: show_login(root))
-            except:
-                pass  # binding eklenemezse hata vermesin
+def open_user_panel(root, uid, role):
+    """Kullanıcı panelini aç."""
+    try:
+        root.withdraw()  # Ana pencereyi gizle
+
+        def on_panel_close(panel):
+            panel.destroy()
+            root.deiconify()  # Ana pencereyi göster
 
         if role == "patient":
-            try:
-                # Hasta penceresini aç
-                patient_window = PatientWindow(root, uid)
-                # Hasta penceresi kapanınca ana pencereyi tekrar göster
-                patient_window.protocol("WM_DELETE_WINDOW", lambda: _on_child_close(patient_window))
-            except Exception as e:
-                print(f"Hasta penceresi açılamadı: {str(e)}")
-                root.deiconify()  # Ana pencereyi tekrar göster
-                ttk.dialogs.Messagebox.show_error(
-                    f"Hasta penceresi açılamadı: {str(e)}",
-                    "Hata"
-                )
+            patient_window = PatientWindow(root, uid)
+            patient_window.protocol("WM_DELETE_WINDOW", lambda: on_panel_close(patient_window))
         elif role == "doctor":
-            try:
-                # Doktor penceresini aç
-                doctor_window = DoctorWindow(root, uid)
-                # Doktor penceresi kapanınca ana pencereyi tekrar göster
-                doctor_window.protocol("WM_DELETE_WINDOW", lambda: _on_child_close(doctor_window))
-            except Exception as e:
-                print(f"Doktor penceresi açılamadı: {str(e)}")
-                root.deiconify()  # Ana pencereyi tekrar göster
-                ttk.dialogs.Messagebox.show_error(
-                    f"Doktor penceresi açılamadı: {str(e)}",
-                    "Hata"
-                )
+            doctor_window = DoctorWindow(root, uid)
+            doctor_window.protocol("WM_DELETE_WINDOW", lambda: on_panel_close(doctor_window))
+            
     except Exception as e:
-        print(f"Giriş işlemi sırasında hata: {str(e)}")
+        print(f"Panel error: {str(e)}")
+        root.deiconify()
         ttk.dialogs.Messagebox.show_error(
-            "Beklenmeyen bir hata oluştu.",
-            "Hata"
+            f"Panel açılamadı: {str(e)}",
+            "Hata",
+            parent=root
         )
 
 
