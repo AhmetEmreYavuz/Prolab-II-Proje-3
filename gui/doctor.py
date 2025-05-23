@@ -3,9 +3,10 @@ import tkinter as tk
 import ttkbootstrap as ttk
 from utils.db import db_cursor
 from gui.add_patient import AddPatientWindow
-from gui.patient import PatientWindow          # Hasta paneli
-from gui.status import StatusWindow            # Günlük diyet/egzersiz
+from gui.patient import PatientWindow  # Hasta paneli
+from gui.status import StatusWindow  # Günlük diyet/egzersiz
 from gui.email_settings import EmailSettingsDialog  # E-posta ayarları
+
 
 class DoctorWindow(tk.Toplevel):
     """Doktorun hasta listesini görüntülediği ve yönetebildiği pencere."""
@@ -15,7 +16,7 @@ class DoctorWindow(tk.Toplevel):
         self.title("💊 Doktor Paneli")
         self.geometry("1200x800")
         self.configure(bg="#2b3e50")
-        
+
         # Pencere merkezde açılsın
         self.update_idletasks()
         width = self.winfo_width()
@@ -23,19 +24,19 @@ class DoctorWindow(tk.Toplevel):
         x = (self.winfo_screenwidth() // 2) - (width // 2)
         y = (self.winfo_screenheight() // 2) - (height // 2)
         self.geometry('{}x{}+{}+{}'.format(width, height, x, y))
-        
+
         self.doctor_id = doctor_id
         self.master_window = master
-        
+
         # Doktor bilgisini getir
         with db_cursor() as cur:
             cur.execute("SELECT full_name FROM users WHERE id=%s", (doctor_id,))
             user_data = cur.fetchone()
             self.doctor_name = user_data["full_name"] if user_data else "Doktor"
-        
+
         # Navigation state
         self.current_view = "main"
-        
+
         self._create_main_view()
 
     def _create_main_view(self):
@@ -43,32 +44,32 @@ class DoctorWindow(tk.Toplevel):
         # Tüm widget'ları temizle
         for widget in self.winfo_children():
             widget.destroy()
-        
+
         self.current_view = "main"
-        
+
         # Ana container
         main_container = ttk.Frame(self, padding=20)
         main_container.pack(fill="both", expand=True)
-        
+
         # Header
         self._create_header(main_container)
-        
+
         # Patient list and controls
         self._create_patient_section(main_container)
-        
+
         # Action buttons
         self._create_action_buttons(main_container)
-        
+
         # Footer
         self._create_footer(main_container)
-        
+
         self._refresh()
-    
+
     def _create_header(self, parent):
         """Header bölümü."""
         header_frame = ttk.Frame(parent)
         header_frame.pack(fill="x", pady=(0, 20))
-        
+
         # Title with modern styling
         title_label = ttk.Label(
             header_frame,
@@ -77,7 +78,7 @@ class DoctorWindow(tk.Toplevel):
             bootstyle="primary"
         )
         title_label.pack()
-        
+
         # Subtitle
         subtitle_label = ttk.Label(
             header_frame,
@@ -86,7 +87,7 @@ class DoctorWindow(tk.Toplevel):
             bootstyle="secondary"
         )
         subtitle_label.pack(pady=(5, 0))
-    
+
     def _create_patient_section(self, parent):
         """Hasta listesi bölümü."""
         # Patient section frame
@@ -97,17 +98,17 @@ class DoctorWindow(tk.Toplevel):
             bootstyle="info"
         )
         patient_frame.pack(fill="both", expand=True, pady=(0, 20))
-        
+
         # Search section
         search_frame = ttk.Frame(patient_frame)
         search_frame.pack(fill="x", pady=(0, 15))
-        
+
         ttk.Label(
             search_frame,
             text="🔍 Hasta Ara:",
             font=("Segoe UI", 11, "bold")
         ).pack(side="left", padx=(0, 10))
-        
+
         self.search_var = tk.StringVar()
         self.search_entry = ttk.Entry(
             search_frame,
@@ -116,7 +117,7 @@ class DoctorWindow(tk.Toplevel):
             textvariable=self.search_var
         )
         self.search_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        
+
         ttk.Button(
             search_frame,
             text="🔍 Ara",
@@ -124,7 +125,7 @@ class DoctorWindow(tk.Toplevel):
             command=self._filter_patients,
             width=12
         ).pack(side="right")
-        
+
         # Patient count info
         self.patient_count_lbl = ttk.Label(
             patient_frame,
@@ -133,11 +134,11 @@ class DoctorWindow(tk.Toplevel):
             bootstyle="secondary"
         )
         self.patient_count_lbl.pack(anchor="w", pady=(0, 10))
-        
+
         # Treeview frame
         tree_frame = ttk.Frame(patient_frame)
         tree_frame.pack(fill="both", expand=True, pady=(0, 15))
-        
+
         # Treeview with modern styling
         self.tree = ttk.Treeview(
             tree_frame,
@@ -150,7 +151,7 @@ class DoctorWindow(tk.Toplevel):
         self.tree.heading("name", text="👤 Hasta Adı")
         self.tree.column("tc", width=200, minwidth=150, anchor="center")
         self.tree.column("name", width=400, minwidth=300, anchor="w")
-        
+
         # Scrollbar
         scrollbar = ttk.Scrollbar(
             tree_frame,
@@ -158,14 +159,14 @@ class DoctorWindow(tk.Toplevel):
             command=self.tree.yview
         )
         self.tree.configure(yscrollcommand=scrollbar.set)
-        
+
         # Pack treeview and scrollbar
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
-        
+
         self.tree.bind("<Double-1>", self._open_patient)
         self.tree.bind("<<TreeviewSelect>>", self._update_selection_label)
-        
+
         # Selected patient info
         self.selected_lbl = ttk.Label(
             patient_frame,
@@ -174,7 +175,7 @@ class DoctorWindow(tk.Toplevel):
             bootstyle="secondary"
         )
         self.selected_lbl.pack(anchor="w")
-    
+
     def _create_action_buttons(self, parent):
         """Action buttons bölümü."""
         action_frame = ttk.LabelFrame(
@@ -184,19 +185,19 @@ class DoctorWindow(tk.Toplevel):
             bootstyle="success"
         )
         action_frame.pack(fill="x", pady=(0, 20))
-        
+
         # Configure responsive layout
         action_frame.columnconfigure(0, weight=1)
         action_frame.columnconfigure(1, weight=1)
         action_frame.columnconfigure(2, weight=1)
-        
+
         # First row buttons
         row1 = ttk.Frame(action_frame)
         row1.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 10))
         row1.columnconfigure(0, weight=1)
         row1.columnconfigure(1, weight=1)
         row1.columnconfigure(2, weight=1)
-        
+
         ttk.Button(
             row1,
             text="➕ Yeni Hasta Ekle",
@@ -204,7 +205,7 @@ class DoctorWindow(tk.Toplevel):
             command=self._show_add_patient,
             width=20
         ).grid(row=0, column=0, padx=(0, 5), sticky="ew")
-        
+
         ttk.Button(
             row1,
             text="👤 Hasta Paneli",
@@ -212,7 +213,7 @@ class DoctorWindow(tk.Toplevel):
             command=self._open_patient,
             width=20
         ).grid(row=0, column=1, padx=(5, 5), sticky="ew")
-        
+
         ttk.Button(
             row1,
             text="📊 Günlük Durum",
@@ -220,14 +221,14 @@ class DoctorWindow(tk.Toplevel):
             command=self._show_status,
             width=20
         ).grid(row=0, column=2, padx=(5, 0), sticky="ew")
-        
+
         # Second row buttons
         row2 = ttk.Frame(action_frame)
         row2.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 10))
         row2.columnconfigure(0, weight=1)
         row2.columnconfigure(1, weight=1)
         row2.columnconfigure(2, weight=1)
-        
+
         ttk.Button(
             row2,
             text="🩺 Belirti Ekle",
@@ -235,7 +236,7 @@ class DoctorWindow(tk.Toplevel):
             command=self._add_symptom,
             width=20
         ).grid(row=0, column=0, padx=(0, 5), sticky="ew")
-        
+
         ttk.Button(
             row2,
             text="📈 Glukoz Geçmişi",
@@ -243,7 +244,7 @@ class DoctorWindow(tk.Toplevel):
             command=self._show_history,
             width=20
         ).grid(row=0, column=1, padx=(5, 5), sticky="ew")
-        
+
         ttk.Button(
             row2,
             text="🔬 Analiz",
@@ -251,13 +252,13 @@ class DoctorWindow(tk.Toplevel):
             command=self._show_analysis,
             width=20
         ).grid(row=0, column=2, padx=(5, 0), sticky="ew")
-        
+
         # Third row - settings and refresh
         row3 = ttk.Frame(action_frame)
         row3.grid(row=2, column=0, columnspan=3, sticky="ew")
         row3.columnconfigure(0, weight=1)
         row3.columnconfigure(1, weight=1)
-        
+
         ttk.Button(
             row3,
             text="📧 E-posta Ayarları",
@@ -265,7 +266,7 @@ class DoctorWindow(tk.Toplevel):
             command=self._open_email_settings,
             width=20
         ).grid(row=0, column=0, padx=(0, 5), sticky="ew")
-        
+
         ttk.Button(
             row3,
             text="🔄 Yenile",
@@ -273,19 +274,19 @@ class DoctorWindow(tk.Toplevel):
             command=self._refresh,
             width=20
         ).grid(row=0, column=1, padx=(5, 0), sticky="ew")
-    
+
     def _create_footer(self, parent):
         """Footer bölümü."""
         footer_frame = ttk.Frame(parent)
         footer_frame.pack(fill="x")
-        
+
         ttk.Label(
             footer_frame,
             text="© 2025 Diyabet Takip Sistemi - Doktor Arayüzü",
             font=("Segoe UI", 9),
             bootstyle="secondary"
         ).pack(side="left")
-        
+
         ttk.Button(
             footer_frame,
             text="❌ Kapat",
@@ -293,7 +294,7 @@ class DoctorWindow(tk.Toplevel):
             width=15,
             command=self.destroy
         ).pack(side="right")
-    
+
     def _show_add_patient(self):
         """Navigate to add patient page."""
         self.current_view = "add_patient"
@@ -303,7 +304,7 @@ class DoctorWindow(tk.Toplevel):
             self._refresh,
             self._create_main_view
         )
-    
+
     def _msg(self, kind: str, message: str, title: str):
         import tkinter.messagebox as mbox
         if kind == 'info':
@@ -317,7 +318,7 @@ class DoctorWindow(tk.Toplevel):
         """Hasta listesini yeniler."""
         if self.current_view != "main":
             return
-            
+
         self.tree.delete(*self.tree.get_children())
 
         with db_cursor() as cur:
@@ -339,7 +340,7 @@ class DoctorWindow(tk.Toplevel):
                 iid=row["id"],
                 values=(row["tc_no"], row["full_name"])
             )
-            
+
         # Update patient count
         patient_count = len(rows)
         if patient_count > 0:
@@ -352,11 +353,11 @@ class DoctorWindow(tk.Toplevel):
                 text="⚠️ Bu doktora bağlı hasta yok.",
                 bootstyle="warning"
             )
-    
+
     def _filter_patients(self, *args):
         """Arama kutusuna göre hasta listesini filtreler."""
         search_term = self.search_var.get().lower().strip()
-        
+
         with db_cursor() as cur:
             cur.execute(
                 """
@@ -368,20 +369,20 @@ class DoctorWindow(tk.Toplevel):
                 (self.doctor_id, self.doctor_id)
             )
             all_patients = cur.fetchall()
-        
+
         self.tree.delete(*self.tree.get_children())
-        
+
         filtered_patients = []
         for patient in all_patients:
-            if (search_term in patient["full_name"].lower() or 
-                search_term in patient["tc_no"].lower()):
+            if (search_term in patient["full_name"].lower() or
+                    search_term in patient["tc_no"].lower()):
                 filtered_patients.append(patient)
                 self.tree.insert(
                     "", tk.END,
                     iid=patient["id"],
                     values=(patient["tc_no"], patient["full_name"])
                 )
-        
+
         count = len(filtered_patients)
         if search_term:
             self.patient_count_lbl.config(
@@ -402,7 +403,7 @@ class DoctorWindow(tk.Toplevel):
             return
         patient_id = int(sel[0])
         PatientWindow(self, patient_id, skip_password_change=True)
-    
+
     def _update_selection_label(self, event=None):
         """Seçili hasta etiketini günceller."""
         sel = self.tree.selection()
@@ -425,7 +426,7 @@ class DoctorWindow(tk.Toplevel):
             self._msg('warning', "Lütfen bir hasta seçin.", "Uyarı")
             return
         patient_id = int(sel[0])
-        full_name  = self.tree.item(sel[0], "values")[1]
+        full_name = self.tree.item(sel[0], "values")[1]
         StatusWindow(self, patient_id, full_name)
 
     def _open_email_settings(self):
@@ -448,7 +449,7 @@ class DoctorWindow(tk.Toplevel):
             self._msg('warning', "Lütfen bir hasta seçin.", "Uyarı")
             return
         patient_id = int(sel[0])
-        full_name  = self.tree.item(sel[0], "values")[1]
+        full_name = self.tree.item(sel[0], "values")[1]
         from gui.glucose_history import GlucoseHistoryWindow
         GlucoseHistoryWindow(self, patient_id, full_name)
 
@@ -458,6 +459,6 @@ class DoctorWindow(tk.Toplevel):
             self._msg('warning', "Lütfen bir hasta seçin.", "Uyarı")
             return
         patient_id = int(sel[0])
-        full_name  = self.tree.item(sel[0], "values")[1]
+        full_name = self.tree.item(sel[0], "values")[1]
         from gui.analysis import AnalysisWindow
         AnalysisWindow(self, patient_id, full_name)

@@ -49,5 +49,5 @@ class GlucoseHistoryWindow(tk.Toplevel):
                 (self.patient_id, since)
             )
             for row in cur:
-                dt_str = row["reading_dt"].strftime("%Y-%m-%d %H:%M")
+                dt_str = row["reading_dt"].strftime("%d-%m-%Y %H:%M:%S")
                 self.tree.insert("", tk.END, values=(dt_str, f"{row['value_mg_dl']:.1f}")) 

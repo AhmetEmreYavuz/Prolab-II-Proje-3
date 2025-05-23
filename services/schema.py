@@ -1,5 +1,5 @@
 # services/schema.py
-"""Eksik tabloları oluşturmak için tek seferlik yardımcı."""
+"""Eksik tabloları ve sütunları oluşturmak için tek seferlik yardımcı."""
 
 from utils.db import db_cursor
 
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS patients (
 CREATE TABLE IF NOT EXISTS glucose_readings (
   id           INT AUTO_INCREMENT PRIMARY KEY,
   patient_id   INT NOT NULL,
-  reading_dt   DATETIME NOT NULL,
+  reading_dt   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   value_mg_dl  DECIMAL(5,2) NOT NULL,
   FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
   INDEX idx_patient_dt (patient_id, reading_dt)
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS insulin_suggestions (
 CREATE TABLE IF NOT EXISTS alerts (
   id           INT AUTO_INCREMENT PRIMARY KEY,
   patient_id   INT NOT NULL,
-  created_dt   DATETIME NOT NULL,
+  created_dt   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   alert_type   ENUM('hypo','mid_high','high','very_high',
                     'missing_all','missing_few'),
   message      TEXT,
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS alerts (
 CREATE TABLE IF NOT EXISTS symptoms (
   id          INT AUTO_INCREMENT PRIMARY KEY,
   patient_id  INT NOT NULL,
-  noted_at    DATETIME NOT NULL,
+  noted_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   description TEXT NOT NULL,
   severity    VARCHAR(50),
   FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
@@ -82,14 +82,30 @@ CREATE TABLE IF NOT EXISTS daily_status (
   UNIQUE KEY uk_patient_day (patient_id, day),
   FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
-
 """
 
 
 def create_missing_tables():
     with db_cursor() as cur:
+        # 1) CREATE TABLE komutları
         for stmt in SCHEMA_SQL.strip().split(";"):
             s = stmt.strip()
             if s:
-                cur.execute(s)
-    print("Eksik tablolar oluşturuldu (var olanlara dokunulmadı).")
+                cur.execute(s + ";")
+
+        # 2) Eksik sütun varsa ekle
+        cur.execute("""
+            SELECT COUNT(*) AS cnt
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME   = 'users'
+              AND COLUMN_NAME  = 'password_change_needed'
+        """)
+        if cur.fetchone()["cnt"] == 0:
+            cur.execute("""
+                ALTER TABLE users
+                ADD COLUMN password_change_needed TINYINT(1) NOT NULL DEFAULT 0
+            """)
+
+
+    print("Eksik tablolar ve sütunlar oluşturuldu / güncellendi.")

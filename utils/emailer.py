@@ -31,17 +31,17 @@ def save_smtp_settings(host, port, user, password, sender, use_smtp=True):
     """SMTP ayarlarını config.ini dosyasına kaydeder."""
     if not config.has_section('Email'):
         config.add_section('Email')
-        
+
     config['Email']['SMTP_HOST'] = host
     config['Email']['SMTP_PORT'] = str(port)
     config['Email']['SMTP_USER'] = user
     config['Email']['SMTP_PASS'] = password
     config['Email']['SMTP_SENDER'] = sender or user
     config['Email']['USE_SMTP'] = 'yes' if use_smtp else 'no'
-    
+
     with open(config_file, 'w') as f:
         config.write(f)
-    
+
     # Global değişkenleri güncelle
     global SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SENDER, USE_SMTP
     SMTP_HOST = host
@@ -60,7 +60,7 @@ def send_mail(to_addr: str, subject: str, body: str):
 
     msg = EmailMessage()
     msg["From"] = SENDER
-    msg["To"]   = to_addr
+    msg["To"] = to_addr
     msg["Subject"] = subject
     msg.set_content(body)
 

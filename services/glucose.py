@@ -1,12 +1,16 @@
 # services/glucose.py
 from datetime import datetime, date
 from utils.db import db_cursor
+from zoneinfo import ZoneInfo
+
 
 
 def add_glucose(patient_id: int, value: float,
                 when: datetime | None = None) -> int:
     """Yeni ölçüm ekler, eklenen satırın ID'sini döndürür."""
-    when = when or datetime.now()
+    # Eğer dışarıdan datetime verilmediyse, Europe/Istanbul TZ’li zamanı kullan
+    when = when or datetime.now(ZoneInfo("Europe/Istanbul"))
+
     with db_cursor() as cur:
         cur.execute(
             "INSERT INTO glucose_readings (patient_id, reading_dt, value_mg_dl) "
@@ -14,6 +18,7 @@ def add_glucose(patient_id: int, value: float,
             (patient_id, when, value),
         )
         return cur.lastrowid
+
 
 
 def list_today(patient_id: int) -> list[dict]:

@@ -1,5 +1,6 @@
 # services/patient.py
 from secrets import choice
+from datetime import date
 from string import ascii_letters, digits
 from utils.db import db_cursor, get_connection
 from utils.hashing import hash_password
@@ -12,10 +13,11 @@ def _gen_pass(k: int = 10) -> str:
 
 
 def register_patient(tc_no: str, full_name: str, email: str,
-                     birth_date: str, gender: str,
+                     birth_date: date | None, gender: str,
                      doctor_id: int, profile_image=None) -> tuple[int, str]:
     """
     Yeni hastayı (users + patients) ekler.
+    :param birth_date: datetime.date (GG.AA.YYYY formatında parse edilmiş) veya None
     :param profile_image: Profil resmi (binary veri)
     :returns: (user_id, plain_password)
     """

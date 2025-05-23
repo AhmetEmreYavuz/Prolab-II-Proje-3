@@ -3,12 +3,12 @@ import mysql.connector
 from contextlib import contextmanager
 
 DB_CONFIG = {
-    "user":       "root",
-    "password":   "admin123",
-    "host":       "localhost",
-    "database":   "diabetes1",
-    "charset":    "utf8mb4",
-    "autocommit": True,
+    "user":     "dts_user",
+    "password": "SüperZorParola_123",
+    "host":     "localhost",
+    "database": "diabetes",
+    "charset":  "utf8mb4",
+    "autocommit": True
 }
 
 
@@ -26,6 +26,7 @@ def db_cursor():
     cnx = get_connection()
     try:
         cur = cnx.cursor(dictionary=True)
+        cur.execute("SET time_zone = '+03:00';")
         yield cur
     finally:
         cur.close()
