@@ -1,46 +1,116 @@
-# gui/add_symptom.py
 import tkinter as tk
 import ttkbootstrap as ttk
-from services.symptom import add_symptom
+from services.symptom import add_symptom, remove_symptom, list_symptoms
+import re
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  Yardımcı: metni kanonikleştir → parantez(ler) ve kenar boşlukları sil, küçük‑harf
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _canon(text: str) -> str:
+    """' Poliüri (sık idrara çıkma)  ' → 'poliüri'"""
+    return re.sub(r"\s*\([^)]*\)", "", text).strip().lower()
+
+#  Uygulamada gösterilecek liste ‑ Görsel metinler (veritabanına aynen yazılmaz!)
+SYMPTOM_CHOICES: list[str] = [
+    "poliüri",
+    "polifaji",
+    "polidipsi",
+    "nöropati",
+    "Kilo kaybı",
+    "Yorgunluk",
+    "Yaraların yavaş iyileşmesi",
+    "Bulanık görme",
+]
+
 
 class AddSymptomDialog(tk.Toplevel):
-    """Doktorun hastaya ait semptom ekleyebileceği pencere."""
+    """Hastaya ait semptomları ekle / kaldır penceresi."""
 
+    # ------------------------------------------------------------------ #
     def __init__(self, master, patient_id: int, on_added=None):
         super().__init__(master)
-        self.title("Belirti Ekle")
+        self.title("Belirti Ekle / Kaldır")
         self.resizable(False, False)
         self.patient_id = patient_id
         self.on_added = on_added or (lambda: None)
 
-        main_frame = ttk.Frame(self, padding=15)
-        main_frame.pack(expand=True, fill="both")
+        # ───── Mevcut belirtileri çek ─────
+        self.current_set: set[str] = {_canon(s) for s in list_symptoms(self.patient_id)}
 
-        ttk.Label(main_frame, text="Belirti Açıklaması", font=("Segoe UI", 11)).pack(anchor="w")
-        self.desc_txt = tk.Text(main_frame, height=4, width=40, font=("Segoe UI", 11))
-        self.desc_txt.pack(fill="x", pady=5)
+        # ───── Arayüz <GUI> iskeleti ─────
+        main = ttk.Frame(self, padding=20)
+        main.pack(fill="both", expand=True)
 
-        ttk.Label(main_frame, text="Şiddet (opsiyonel)", font=("Segoe UI", 11)).pack(anchor="w", pady=(10,0))
-        self.severity_var = tk.StringVar()
-        ttk.Combobox(main_frame, textvariable=self.severity_var,
-                     values=("hafif", "orta", "şiddetli"), width=15,
-                     state="readonly").pack(anchor="w", pady=5)
+        ttk.Label(main, text="Belirtileri işaretleyin", bootstyle="primary",
+                  font=("Segoe UI", 12, "bold")).pack(anchor="w", pady=(0, 8))
 
-        status_lbl = ttk.Label(main_frame, text="", font=("Segoe UI", 10))
-        status_lbl.pack(fill="x", pady=(10,0))
+        list_fr = ttk.Frame(main)
+        list_fr.pack(fill="x")
 
-        btn_frame = ttk.Frame(main_frame)
-        btn_frame.pack(fill="x", pady=(15,0))
+        # Checkbox'lar
+        self.vars: dict[str, tk.BooleanVar] = {}
+        for sym in SYMPTOM_CHOICES:
+            var = tk.BooleanVar(value=(_canon(sym) in self.current_set))
+            ttk.Checkbutton(
+                list_fr, text=sym, variable=var, bootstyle="round-toggle"
+            ).pack(anchor="w", pady=2)
+            self.vars[sym] = var
 
-        def _save():
-            desc = self.desc_txt.get("1.0", tk.END).strip()
-            severity = self.severity_var.get() or None
-            if not desc:
-                status_lbl.config(text="Açıklama boş olamaz!", bootstyle="danger")
-                return
-            add_symptom(self.patient_id, desc, severity)
-            status_lbl.config(text="Belirti kaydedildi.", bootstyle="success")
-            self.after(800, lambda: (self.destroy(), self.on_added()))
+        ttk.Separator(main, orient="horizontal").pack(fill="x", pady=10)
 
-        ttk.Button(btn_frame, text="Kaydet", bootstyle="success", command=_save, width=12).pack(side="left", padx=(0,5))
-        ttk.Button(btn_frame, text="İptal", bootstyle="secondary", command=self.destroy, width=12).pack(side="right", padx=(5,0)) 
+        # Serbest metin girişi
+        ttk.Label(main, text="Diğer / özel belirti (opsiyonel)",
+                  font=("Segoe UI", 10)).pack(anchor="w")
+        self.extra_txt = tk.Text(main, height=3, width=40, font=("Segoe UI", 10))
+        self.extra_txt.pack(fill="x", pady=(4, 0))
+
+        # Durum / hata etiketi
+        self.status_lbl = ttk.Label(main, text="", font=("Segoe UI", 10))
+        self.status_lbl.pack(fill="x", pady=(8, 0))
+
+        # Butonlar
+        btn_fr = ttk.Frame(main)
+        btn_fr.pack(pady=(15, 0), fill="x")
+        ttk.Button(btn_fr, text="Kaydet", width=14, bootstyle="success",
+                   command=self._save).pack(side="left", padx=(0, 6))
+        ttk.Button(btn_fr, text="İptal", width=14, bootstyle="secondary",
+                   command=self.destroy).pack(side="right", padx=(6, 0))
+
+        # Klavye kısayolları
+        self.bind("<Return>", lambda *_: self._save())
+        self.bind("<Escape>", lambda *_: self.destroy())
+
+    # ------------------------------------------------------------------ #
+    def _save(self):
+        """Seçilen / kaldırılan belirtileri senkronize eder."""
+
+        # ➊ Checkbox'lardan gelen seçimler
+        chosen = {_canon(sym) for sym, var in self.vars.items() if var.get()}
+
+        # ➋ Serbest metin
+        extra_raw = self.extra_txt.get("1.0", tk.END).strip()
+        if extra_raw:
+            chosen.add(_canon(extra_raw))
+
+        # Hiç seçim yoksa uyarı
+        if not chosen:
+            self.status_lbl.config(text="Lütfen en az bir belirti seçin veya yazın.",
+                                   bootstyle="danger")
+            return
+
+        try:
+            # 🌟 Senkronizasyon: ekle / sil farkı
+            to_add = chosen - self.current_set
+            to_del = self.current_set - chosen
+
+            for sym in to_add:
+                add_symptom(self.patient_id, sym, None)
+            for sym in to_del:
+                remove_symptom(self.patient_id, sym)
+
+            self.status_lbl.config(text="Belirtiler güncellendi.", bootstyle="success")
+            self.after(700, lambda: (self.destroy(), self.on_added()))
+
+        except Exception as err:
+            self.status_lbl.config(text=f"Hata: {err}", bootstyle="danger")

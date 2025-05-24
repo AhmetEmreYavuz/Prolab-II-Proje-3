@@ -6,6 +6,8 @@ from gui.add_patient import AddPatientWindow
 from gui.patient import PatientWindow  # Hasta paneli
 from gui.status import StatusWindow  # Günlük diyet/egzersiz
 from gui.email_settings import EmailSettingsDialog  # E-posta ayarları
+from gui.add_symptom import AddSymptomDialog    #  <<<  EKLEYİN
+
 
 
 class DoctorWindow(tk.Toplevel):
@@ -177,99 +179,82 @@ class DoctorWindow(tk.Toplevel):
         self.selected_lbl.pack(anchor="w")
 
     def _create_action_buttons(self, parent):
-        """Action buttons bölümü."""
+        """Action-buttons bölümü (doktor paneli)."""
         action_frame = ttk.LabelFrame(
-            parent,
-            text="⚡ Hızlı İşlemler",
-            padding=15,
-            bootstyle="success"
+            parent, text="⚡ Hızlı İşlemler",
+            padding=15, bootstyle="success"
         )
         action_frame.pack(fill="x", pady=(0, 20))
 
-        # Configure responsive layout
-        action_frame.columnconfigure(0, weight=1)
-        action_frame.columnconfigure(1, weight=1)
-        action_frame.columnconfigure(2, weight=1)
+        # ——— her satır 3 sütun genişler ———#
+        action_frame.columnconfigure((0, 1, 2), weight=1)
 
-        # First row buttons
+        # ───────────── 1. SATIR ───────────── #
         row1 = ttk.Frame(action_frame)
         row1.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 10))
-        row1.columnconfigure(0, weight=1)
-        row1.columnconfigure(1, weight=1)
-        row1.columnconfigure(2, weight=1)
+        row1.columnconfigure((0, 1, 2), weight=1)
 
         ttk.Button(
-            row1,
-            text="➕ Yeni Hasta Ekle",
+            row1, text="➕ Yeni Hasta Ekle",
             bootstyle="success",
             command=self._show_add_patient,
             width=20
         ).grid(row=0, column=0, padx=(0, 5), sticky="ew")
 
         ttk.Button(
-            row1,
-            text="👤 Hasta Paneli",
+            row1, text="👤 Hasta Paneli",
             bootstyle="primary",
             command=self._open_patient,
             width=20
-        ).grid(row=0, column=1, padx=(5, 5), sticky="ew")
+        ).grid(row=0, column=1, padx=5, sticky="ew")
 
         ttk.Button(
-            row1,
-            text="📊 Günlük Durum",
+            row1, text="📊 Günlük Durum",
             bootstyle="warning",
             command=self._show_status,
             width=20
         ).grid(row=0, column=2, padx=(5, 0), sticky="ew")
 
-        # Second row buttons
+        # ───────────── 2. SATIR ───────────── #
         row2 = ttk.Frame(action_frame)
         row2.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 10))
-        row2.columnconfigure(0, weight=1)
-        row2.columnconfigure(1, weight=1)
-        row2.columnconfigure(2, weight=1)
+        row2.columnconfigure((0, 1, 2), weight=1)
 
         ttk.Button(
-            row2,
-            text="🩺 Belirti Ekle",
-            bootstyle="info",
+            row2, text="🩺 Belirti Ekle",
+            bootstyle="warning",  # ← isteğe göre ‘warning’/‘info’
             command=self._add_symptom,
             width=20
         ).grid(row=0, column=0, padx=(0, 5), sticky="ew")
 
         ttk.Button(
-            row2,
-            text="📈 Glukoz Geçmişi",
+            row2, text="📈 Glukoz Geçmişi",
             bootstyle="secondary",
             command=self._show_history,
             width=20
-        ).grid(row=0, column=1, padx=(5, 5), sticky="ew")
+        ).grid(row=0, column=1, padx=5, sticky="ew")
 
         ttk.Button(
-            row2,
-            text="🔬 Analiz",
+            row2, text="🔬 Analiz",
             bootstyle="info",
             command=self._show_analysis,
             width=20
         ).grid(row=0, column=2, padx=(5, 0), sticky="ew")
 
-        # Third row - settings and refresh
+        # ───────────── 3. SATIR ───────────── #
         row3 = ttk.Frame(action_frame)
         row3.grid(row=2, column=0, columnspan=3, sticky="ew")
-        row3.columnconfigure(0, weight=1)
-        row3.columnconfigure(1, weight=1)
+        row3.columnconfigure((0, 1), weight=1)
 
         ttk.Button(
-            row3,
-            text="📧 E-posta Ayarları",
+            row3, text="📧 E-posta Ayarları",
             bootstyle="warning-outline",
             command=self._open_email_settings,
             width=20
         ).grid(row=0, column=0, padx=(0, 5), sticky="ew")
 
         ttk.Button(
-            row3,
-            text="🔄 Yenile",
+            row3, text="🔄 Yenile",
             bootstyle="secondary-outline",
             command=self._refresh,
             width=20
@@ -433,16 +418,6 @@ class DoctorWindow(tk.Toplevel):
         """E-posta ayarları penceresini açar."""
         EmailSettingsDialog(self)
 
-    def _add_symptom(self):
-        """Seçilen hasta için semptom ekleme dialogu."""
-        sel = self.tree.selection()
-        if not sel:
-            self._msg('warning', "Lütfen bir hasta seçin.", "Uyarı")
-            return
-        patient_id = int(sel[0])
-        from gui.add_symptom import AddSymptomDialog
-        AddSymptomDialog(self, patient_id)
-
     def _show_history(self):
         sel = self.tree.selection()
         if not sel:
@@ -462,3 +437,19 @@ class DoctorWindow(tk.Toplevel):
         full_name = self.tree.item(sel[0], "values")[1]
         from gui.analysis import AnalysisWindow
         AnalysisWindow(self, patient_id, full_name)
+
+    def _add_symptom(self):
+        """Seçilen hasta için çoklu ‘Belirti Ekle’ diyalogunu açar."""
+        sel = self.tree.selection()
+        if not sel:
+            self._msg('warning', "Lütfen bir hasta seçin.", "Uyarı")
+            return
+
+        patient_id   = int(sel[0])
+        patient_name = self.tree.item(sel[0], "values")[1]
+
+        def _on_added():
+            self._msg('info', f"{patient_name} hastası için belirtiler kaydedildi.", "Bilgi")
+            self._refresh()  # <- opsiyonel: paneli yenile
+
+        AddSymptomDialog(self, patient_id, on_added=_on_added)

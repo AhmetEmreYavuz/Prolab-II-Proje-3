@@ -1,32 +1,65 @@
-"""Hastalık belirtisi (semptom) ile ilgili veritabanı işlemleri."""
-from datetime import datetime
+"""
+Semptom ekleme / silme / listeleme servisleri
+"""
 from utils.db import db_cursor
+import re
 
+# ────────────────────────── CRUD ────────────────────────── #
+def add_symptom(patient_id: int, description: str, severity: str | None):
+    """
+    Parantez içindeki açıklamaları atarak kaydeder.
+    '  Poliüri (sık idrara çıkma)  '  ->  'Poliüri'
+    """
+    clean_desc = re.sub(r"\s*\([^)]*\)", "", description).strip()
 
-def add_symptom(patient_id: int, description: str, severity: str | None = None,
-                noted_at: datetime | None = None):
-    """Yeni semptom kaydı ekler."""
-    noted_at = noted_at or datetime.now()
+    with db_cursor() as cur:
+        cur.execute(
+            "INSERT INTO symptoms (patient_id, description, severity) "
+            "VALUES (%s, %s, %s)",
+            (patient_id, clean_desc, severity)
+        )
+
+def remove_symptom(patient_id: int, description: str):
+    """
+    Verilen açıklamanın EN SON eklenmiş tek satırını siler.
+    (MySQL 1093 hatasını önlemek için türetilmiş tablo kullandık.)
+    """
     with db_cursor() as cur:
         cur.execute(
             """
-            INSERT INTO symptoms (patient_id, noted_at, description, severity)
-            VALUES (%s, %s, %s, %s)
+            DELETE s
+            FROM symptoms AS s
+            JOIN (
+                SELECT id
+                FROM symptoms
+                WHERE patient_id = %s AND description = %s
+                ORDER BY noted_at DESC
+                LIMIT 1
+            ) AS x ON x.id = s.id
             """,
-            (patient_id, noted_at, description, severity)
+            (patient_id, description)
         )
 
-
-def list_recent(patient_id: int, days: int = 30):
-    """Belirtilen hasta için son *days* günlük semptom kayıtlarını döndürür."""
+def list_symptoms(patient_id: int) -> list[str]:
     with db_cursor() as cur:
         cur.execute(
-            """
-            SELECT noted_at, description, severity
-            FROM symptoms
-            WHERE patient_id=%s AND noted_at >= NOW() - INTERVAL %s DAY
-            ORDER BY noted_at DESC
-            """,
-            (patient_id, days)
+            "SELECT description FROM symptoms "
+            "WHERE patient_id=%s ORDER BY noted_at ASC",
+            (patient_id,)
         )
-        return cur.fetchall() 
+        return [r["description"] for r in cur.fetchall()]
+
+# en alta ekleyin – bugünün (veya son 24 saatin) tüm açıklamaları
+def list_today(patient_id: int) -> list[str]:
+    """
+    Hastanın bugün eklenmiş tüm belirti açıklamalarını döndürür (küçük-harf).
+    """
+    from datetime import date
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT description FROM symptoms "
+            "WHERE patient_id=%s AND DATE(noted_at)=%s",
+            (patient_id, date.today())
+        )
+        return [row["description"].lower() for row in cur.fetchall()]
+

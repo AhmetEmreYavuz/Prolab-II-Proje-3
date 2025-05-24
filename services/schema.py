@@ -70,6 +70,16 @@ CREATE TABLE IF NOT EXISTS symptoms (
   INDEX idx_patient_dt (patient_id, noted_at)
 ) ENGINE=InnoDB;
 
+/* -------------- PATIENT_SYMPTOMS -------------- */
+CREATE TABLE IF NOT EXISTS patient_symptoms (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  patient_id   INT NOT NULL,
+  symptom_code VARCHAR(30) NOT NULL,
+  added_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_patient_symptom (patient_id, symptom_code),
+  FOREIGN KEY (patient_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 /* -------------- DAILY STATUS -------------- */
 CREATE TABLE IF NOT EXISTS daily_status (
   id            INT AUTO_INCREMENT PRIMARY KEY,
