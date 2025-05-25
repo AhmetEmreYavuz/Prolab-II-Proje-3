@@ -179,6 +179,18 @@ class DoctorWindow(tk.Toplevel):
             bootstyle="secondary"
         )
         self.selected_lbl.pack(anchor="w")
+        
+        # Otomatik yenileme butonu
+        refresh_frame = ttk.Frame(patient_frame)
+        refresh_frame.pack(fill="x", pady=(10, 0))
+        
+        ttk.Button(
+            refresh_frame,
+            text="🔄 Verileri Yenile",
+            bootstyle="info-outline",
+            command=self._refresh,
+            width=20
+        ).pack(side="right")
 
     def _create_action_buttons(self, parent):
         """Action-buttons bölümü (doktor paneli)."""

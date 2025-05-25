@@ -73,25 +73,63 @@ class AnalysisWindow(tk.Toplevel):
             ttk.Label(frame, text="Bu dönemde ölçüm yok.").pack(anchor="w", pady=5)
 
         # Diyet / egzersiz uyum oranı
-        ttk.Label(frame, text="\nSon 30 Günlük Diyet & Egzersiz Uyum Oranı", font=("Segoe UI", 12, "bold")).pack(
-            anchor="w", pady=(10, 5))
+        compliance_frame = ttk.Frame(frame)
+        compliance_frame.pack(fill="x", pady=(10, 0))
+        
+        ttk.Label(compliance_frame, text="Son 30 Günlük Diyet & Egzersiz Uyum Oranı", 
+                  font=("Segoe UI", 12, "bold")).pack(anchor="w", pady=(0, 5))
+        
+        ttk.Button(
+            compliance_frame,
+            text="🔄 Yenile",
+            bootstyle="info-outline",
+            command=lambda: self._refresh_compliance_stats(compliance_frame),
+            width=12
+        ).pack(anchor="e", pady=(0, 10))
+        
+        self.compliance_content = ttk.Frame(compliance_frame)
+        self.compliance_content.pack(fill="x")
+        
+        self._refresh_compliance_stats(compliance_frame)
+
+    def _refresh_compliance_stats(self, parent_frame):
+        """Uyum istatistiklerini yenile."""
+        # Clear existing content
+        for widget in self.compliance_content.winfo_children():
+            widget.destroy()
+            
         with db_cursor() as cur:
             cur.execute(
                 """
-                SELECT SUM(diet_done) AS diet_ok, SUM(exercise_done) AS ex_ok, COUNT(*) AS days
+                SELECT SUM(diet_done) AS diet_ok, SUM(exercise_done) AS ex_ok, COUNT(*) AS days,
+                       COUNT(CASE WHEN diet_done = 1 AND exercise_done = 1 THEN 1 END) AS both_ok
                 FROM daily_status
                 WHERE patient_id=%s AND day >= CURDATE() - INTERVAL 30 DAY
                 """,
                 (self.patient_id,)
             )
             res = cur.fetchone()
+            
         if res and res["days"]:
             diet_rate = 100 * res["diet_ok"] / res["days"] if res["days"] else 0
             ex_rate = 100 * res["ex_ok"] / res["days"] if res["days"] else 0
-            ttk.Label(frame, text=f"Diyet uyumu:     {diet_rate:.0f}%").pack(anchor="w", pady=2)
-            ttk.Label(frame, text=f"Egzersiz uyumu: {ex_rate:.0f}%").pack(anchor="w", pady=2)
+            both_rate = 100 * res["both_ok"] / res["days"] if res["days"] else 0
+            
+            # Create status labels with color coding
+            diet_color = "success" if diet_rate >= 80 else "warning" if diet_rate >= 60 else "danger"
+            ex_color = "success" if ex_rate >= 80 else "warning" if ex_rate >= 60 else "danger"
+            both_color = "success" if both_rate >= 70 else "warning" if both_rate >= 50 else "danger"
+            
+            ttk.Label(self.compliance_content, text=f"📊 Toplam kayıt günü: {res['days']} gün").pack(anchor="w", pady=2)
+            ttk.Label(self.compliance_content, text=f"🥗 Diyet uyumu: {diet_rate:.0f}%", 
+                      bootstyle=diet_color).pack(anchor="w", pady=2)
+            ttk.Label(self.compliance_content, text=f"🏃 Egzersiz uyumu: {ex_rate:.0f}%", 
+                      bootstyle=ex_color).pack(anchor="w", pady=2)
+            ttk.Label(self.compliance_content, text=f"✅ İkisini birden: {both_rate:.0f}%", 
+                      bootstyle=both_color).pack(anchor="w", pady=2)
         else:
-            ttk.Label(frame, text="Bu dönemde veri yok.").pack(anchor="w", pady=5)
+            ttk.Label(self.compliance_content, text="❌ Bu dönemde veri yok.", 
+                      bootstyle="warning").pack(anchor="w", pady=5)
 
     def _create_glucose_graphs(self, frame):
         """Kan şekeri grafiklerini oluştur"""

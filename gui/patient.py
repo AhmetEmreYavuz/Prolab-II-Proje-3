@@ -47,6 +47,9 @@ class PatientWindow(tk.Toplevel):
         self.title("💊 Hasta Paneli")
         self.geometry("1400x900")
         self.configure(bg="#2b3e50")
+        
+        # Dashboard için gerekli değişkenler
+        self.current_date = date.today()  # Bugünün tarihi
 
         # Ekranın ortasına yerleştir
         self.update_idletasks()
@@ -527,24 +530,50 @@ class PatientWindow(tk.Toplevel):
 
     # ================== DİYET & EGZERSİZ KAYDETME ===================== #
     def _save_status(self):
-        diet_map = {
-            "🚫 Şekersiz": "sugar_free",
-            "⚖️ Dengeli": "balanced",
-            "🥦 Düşük Şeker": "low_sugar",
-        }
-        ex_map = {
-            "🚶 Yürüyüş": "walk",
-            "🚴 Bisiklet": "bike",
-            "🏥 Klinik Egzersiz": "clinic",
-        }
-        diet_type = diet_map.get(self.diet_cmb.get(), "balanced")
-        ex_type = ex_map.get(self.ex_cmb.get(), "walk")
-        upsert_status(
-            self.patient_id, diet_type, self.diet_chk.get(), ex_type, self.ex_chk.get()
-        )
-        ttk.dialogs.Messagebox.show_info(
-            "Durum kaydedildi.", "Başarılı", parent=self
-        )
+        try:
+            diet_map = {
+                "🚫 Şekersiz": "sugar_free",
+                "⚖️ Dengeli": "balanced",
+                "🥦 Düşük Şeker": "low_sugar",
+            }
+            ex_map = {
+                "🚶 Yürüyüş": "walk",
+                "🚴 Bisiklet": "bike",
+                "🏥 Klinik Egzersiz": "clinic",
+            }
+            
+            diet_type = diet_map.get(self.diet_cmb.get(), "balanced")
+            ex_type = ex_map.get(self.ex_cmb.get(), "walk")
+            diet_done = self.diet_chk.get()
+            ex_done = self.ex_chk.get()
+            
+            # Veritabanına kaydet
+            upsert_status(
+                self.patient_id, diet_type, diet_done, ex_type, ex_done
+            )
+            
+            # Başarı mesajı ve detaylı bilgi
+            success_msg = (
+                f"✅ Bugünün durumu kaydedildi!\n\n"
+                f"🥗 Diyet: {self.diet_cmb.get()} ({'✅ Uygulandı' if diet_done else '❌ Uygulanmadı'})\n"
+                f"🏃 Egzersiz: {self.ex_cmb.get()} ({'✅ Yapıldı' if ex_done else '❌ Yapılmadı'})\n\n"
+                f"💡 Bu veriler doktor panelinde gerçek zamanlı olarak görülecektir."
+            )
+            
+            ttk.dialogs.Messagebox.show_info(
+                success_msg, "📊 Durum Kaydedildi", parent=self
+            )
+            
+            print(f"DEBUG: Hasta {self.patient_id} için diyet/egzersiz durumu kaydedildi:")
+            print(f"  - Diyet: {diet_type} (done: {diet_done})")
+            print(f"  - Egzersiz: {ex_type} (done: {ex_done})")
+            
+        except Exception as err:
+            ttk.dialogs.Messagebox.show_error(
+                f"Durum kaydedilemedi:\n{str(err)}", 
+                "❌ Hata", 
+                parent=self
+            )
 
     # ==================== DASHBOARD YENİLEME ========================== #
     def _refresh_dashboard(self):
