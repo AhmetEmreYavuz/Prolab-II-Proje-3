@@ -581,7 +581,13 @@ class PatientWindow(tk.Toplevel):
         günceller.  Ayrıca slot–bazlı kümülatif ortalamaları hesaplar, eksik /
         yetersiz veri uyarılarını gösterir ve rules.evaluate_day'i tetikler.
         """
-        readings = list_today(self.patient_id) or []
+        # Tarih giriş kutusundaki tarihi kullan
+        try:
+            selected_date = datetime.strptime(self.date_ent.get().strip(), "%d.%m.%Y").date()
+        except (ValueError, AttributeError):
+            selected_date = date.today()
+            
+        readings = list_for_date(self.patient_id, selected_date) or []
 
         # --- Önce ekrandaki eski kayıtları temizle --------------------
         for item_id in self.history_tree.get_children():
@@ -599,7 +605,7 @@ class PatientWindow(tk.Toplevel):
                 font=("Segoe UI", 14, "bold"),
                 bootstyle="warning",
             ).pack(pady=(20, 10))
-            evaluate_day(self.patient_id, date.today())
+            evaluate_day(self.patient_id, selected_date)
             return
 
         # --- Beş vakte göre kümülatif ortalamalar ---------------------
@@ -670,7 +676,7 @@ class PatientWindow(tk.Toplevel):
         self._update_lifestyle_suggestion(day_avg)
 
         # 9) Kural tabanlı uyarılar
-        evaluate_day(self.patient_id, date.today())
+        evaluate_day(self.patient_id, selected_date)
 
         # ★ Scroll bölgesini yeni boyuta uydur
         if hasattr(self, "scroll_fr"):
