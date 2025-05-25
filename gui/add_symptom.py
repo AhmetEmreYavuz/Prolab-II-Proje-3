@@ -17,10 +17,10 @@ SYMPTOM_CHOICES: list[str] = [
     "polifaji",
     "polidipsi",
     "nöropati",
-    "Kilo kaybı",
-    "Yorgunluk",
-    "Yaraların yavaş iyileşmesi",
-    "Bulanık görme",
+    "kilo kaybı",
+    "yorgunluk",
+    "yaraların yavaş iyileşmesi",
+    "bulanık görme",
 ]
 
 

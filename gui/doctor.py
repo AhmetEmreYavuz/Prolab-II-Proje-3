@@ -7,6 +7,8 @@ from gui.patient import PatientWindow  # Hasta paneli
 from gui.status import StatusWindow  # Günlük diyet/egzersiz
 from gui.email_settings import EmailSettingsDialog  # E-posta ayarları
 from gui.add_symptom import AddSymptomDialog    #  <<<  EKLEYİN
+from gui.alerts import AlertsWindow    # ekle
+
 
 
 
@@ -260,6 +262,13 @@ class DoctorWindow(tk.Toplevel):
             width=20
         ).grid(row=0, column=1, padx=(5, 0), sticky="ew")
 
+        # ★ YENİ ★  – Doktora gelen uyarı/mesaj kutusu
+        ttk.Button(
+            row3, text="⚠️ Uyarılar",
+            bootstyle="danger", command=self._show_alerts,
+            width=20
+        ).grid(row=0, column=2, padx=(5, 0), sticky="ew")
+
     def _create_footer(self, parent):
         """Footer bölümü."""
         footer_frame = ttk.Frame(parent)
@@ -453,3 +462,9 @@ class DoctorWindow(tk.Toplevel):
             self._refresh()  # <- opsiyonel: paneli yenile
 
         AddSymptomDialog(self, patient_id, on_added=_on_added)
+
+    def _show_alerts(self):
+        """Hastalar için üretilen kritik uyarıları listeleyen pencere."""
+        from gui.alerts import AlertsWindow  # yeni diyalog-pencerede uyarıları göstereceksiniz
+        AlertsWindow(self, self.doctor_id)
+
