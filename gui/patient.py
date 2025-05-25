@@ -48,8 +48,7 @@ class PatientWindow(tk.Toplevel):
         self.geometry("1400x900")
         self.configure(bg="#2b3e50")
         
-        # Dashboard için gerekli değişkenler
-        self.current_date = date.today()  # Bugünün tarihi
+
 
         # Ekranın ortasına yerleştir
         self.update_idletasks()
@@ -582,7 +581,7 @@ class PatientWindow(tk.Toplevel):
         günceller.  Ayrıca slot–bazlı kümülatif ortalamaları hesaplar, eksik /
         yetersiz veri uyarılarını gösterir ve rules.evaluate_day'i tetikler.
         """
-        readings = list_for_date(self.patient_id, self.current_date) or []
+        readings = list_today(self.patient_id) or []
 
         # --- Önce ekrandaki eski kayıtları temizle --------------------
         for item_id in self.history_tree.get_children():
@@ -671,7 +670,7 @@ class PatientWindow(tk.Toplevel):
         self._update_lifestyle_suggestion(day_avg)
 
         # 9) Kural tabanlı uyarılar
-        evaluate_day(self.patient_id, self.current_date)
+        evaluate_day(self.patient_id, date.today())
 
         # ★ Scroll bölgesini yeni boyuta uydur
         if hasattr(self, "scroll_fr"):
@@ -746,7 +745,6 @@ class PatientWindow(tk.Toplevel):
             return
 
         self.closed_date = sel_day
-        self.current_date = sel_day  # özetler bu güne göre
         self._refresh_dashboard()  # sağ paneli tazele
 
         ttk.dialogs.Messagebox.show_info(
