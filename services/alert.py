@@ -5,13 +5,14 @@ def add_alert(patient_id: int,
               alert_type: str,
               message: str,
               day: datetime | None = None) -> None:
-    """
-    alerts tablosuna tek satır ekler. Mevcut yapıya uygun olarak sadece
-    patient_id, message ve created_dt alanlarını kullanır.
-    """
+
+    day = day or datetime.today().date()
     with db_cursor() as cur:
         cur.execute("""
             INSERT INTO alerts 
-              (patient_id, created_dt, message)
-            VALUES (%s, NOW(), %s)
-        """, (patient_id, message))
+              (patient_id, created_dt, alert_type, message, day)
+            VALUES (%s, NOW(), %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+              message     = VALUES(message),
+              created_dt  = NOW()
+        """, (patient_id, alert_type, message, day))

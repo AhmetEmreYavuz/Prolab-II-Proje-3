@@ -7,9 +7,7 @@ from services.glucose import add_glucose
 from services.rules import evaluate_day
 
 
-# ----------------------------------------------------------------------
-# SEED  –  Örnek doktor + aynı ID ile hasta
-# ----------------------------------------------------------------------
+
 def seed() -> None:
     with db_cursor() as cur:
         cur.execute("SELECT id FROM users WHERE tc_no=%s", ("12345678901",))
@@ -22,15 +20,15 @@ def seed() -> None:
             "VALUES (%s, %s, %s, %s, %s)",
             (
                 "12345678901",
-                "Dr. Ayşe Yılmaz",
-                "ayse@example.com",
+                "Ahmet Esad",
+                "doctoremail@ornek.com",
                 hash_password("drpass"),
                 "doctor",
             ),
         )
         doc_id = cur.lastrowid
 
-        # Doktoru aynı zamanda hasta olarak ekle (test kolaylığı)
+
         cur.execute(
             "INSERT IGNORE INTO patients (id, doctor_id) VALUES (%s, %s)",
             (doc_id, doc_id),
@@ -38,9 +36,6 @@ def seed() -> None:
         print("Örnek doktor ve hasta eklendi, id:", doc_id)
 
 
-# ----------------------------------------------------------------------
-# CLI  –  Kan şekeri ölçümü ekleyin
-# ----------------------------------------------------------------------
 def cli_add_glucose(args: list[str]) -> None:
     if len(args) != 2:
         print("Kullanım: python app.py add_glucose <hasta_id> <değer>")
@@ -56,9 +51,6 @@ def cli_add_glucose(args: list[str]) -> None:
     print(f"Ölçüm eklendi. Row ID = {row_id}")
 
 
-# ----------------------------------------------------------------------
-# CLI  –  Gün sonu değerlendirme
-# ----------------------------------------------------------------------
 def cli_evaluate(args: list[str]) -> None:
     if len(args) != 1:
         print("Kullanım: python app.py evaluate <hasta_id>")
@@ -69,12 +61,10 @@ def cli_evaluate(args: list[str]) -> None:
         print("Hata: <hasta_id> tamsayı olmalıdır.")
         return
 
-    evaluate_day(patient_id)          # konsola ortalama & doz yazar
+    evaluate_day(patient_id)
 
 
-# ----------------------------------------------------------------------
-# Ana komut yönlendirici
-# ----------------------------------------------------------------------
+
 if __name__ == "__main__":
     import sys
 

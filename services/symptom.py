@@ -1,15 +1,10 @@
-"""
-Semptom ekleme / silme / listeleme servisleri
-"""
+
 from utils.db import db_cursor
 import re
 
 # ────────────────────────── CRUD ────────────────────────── #
 def add_symptom(patient_id: int, description: str, severity: str | None):
-    """
-    Parantez içindeki açıklamaları atarak kaydeder.
-    '  Poliüri (sık idrara çıkma)  '  ->  'Poliüri'
-    """
+
     clean_desc = re.sub(r"\s*\([^)]*\)", "", description).strip()
 
     with db_cursor() as cur:
@@ -20,10 +15,7 @@ def add_symptom(patient_id: int, description: str, severity: str | None):
         )
 
 def remove_symptom(patient_id: int, description: str):
-    """
-    Verilen açıklamanın EN SON eklenmiş tek satırını siler.
-    (MySQL 1093 hatasını önlemek için türetilmiş tablo kullandık.)
-    """
+
     with db_cursor() as cur:
         cur.execute(
             """
@@ -49,11 +41,9 @@ def list_symptoms(patient_id: int) -> list[str]:
         )
         return [r["description"] for r in cur.fetchall()]
 
-# en alta ekleyin – bugünün (veya son 24 saatin) tüm açıklamaları
+
 def list_today(patient_id: int) -> list[str]:
-    """
-    Hastanın bugün eklenmiş tüm belirti açıklamalarını döndürür (küçük-harf).
-    """
+
     from datetime import date
     with db_cursor() as cur:
         cur.execute(

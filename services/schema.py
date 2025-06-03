@@ -1,5 +1,5 @@
 # services/schema.py
-"""Eksik tabloları ve sütunları oluşturmak için tek seferlik yardımcı."""
+
 
 from utils.db import db_cursor
 

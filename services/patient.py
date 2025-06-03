@@ -15,20 +15,12 @@ def _gen_pass(k: int = 10) -> str:
 def register_patient(tc_no: str, full_name: str, email: str,
                      birth_date: date | None, gender: str,
                      doctor_id: int, profile_image=None) -> tuple[int, str]:
-    """
-    Yeni hastayı (users + patients) ekler.
-    :param birth_date: datetime.date (GG.AA.YYYY formatında parse edilmiş) veya None
-    :param profile_image: Profil resmi (binary veri)
-    :returns: (user_id, plain_password)
-    """
     plain_pw = _gen_pass()
-    
-    # Explicit transaction management
+
     conn = get_connection()
     try:
         cur = conn.cursor(dictionary=True)
-        
-        # users
+
         cur.execute(
             "INSERT INTO users "
             "(tc_no, full_name, email, password_hash, role, birth_date, gender, password_change_needed) "
@@ -36,8 +28,7 @@ def register_patient(tc_no: str, full_name: str, email: str,
             (tc_no, full_name, email, hash_password(plain_pw), birth_date, gender)
         )
         uid = cur.lastrowid
-        
-        # patients
+
         if profile_image:
             cur.execute(
                 "INSERT INTO patients (id, doctor_id, profile_img) VALUES (%s,%s,%s)",
@@ -48,12 +39,10 @@ def register_patient(tc_no: str, full_name: str, email: str,
                 "INSERT INTO patients (id, doctor_id) VALUES (%s,%s)",
                 (uid, doctor_id)
             )
-        
-        # Explicitly commit the transaction
+
         conn.commit()
         print(f"Patient added successfully. User ID: {uid}")
-        
-        # Mail gönder
+
         send_mail(
             email,
             "Diyabet Takip Sistemi Giriş Bilgileri",
@@ -61,15 +50,15 @@ def register_patient(tc_no: str, full_name: str, email: str,
             f"Sisteme giriş için:\nTC No : {tc_no}\nParola : {plain_pw}\n\n"
             "Lütfen ilk girişten sonra parolanızı değiştirin."
         )
-        
+
         return uid, plain_pw
-    
+
     except Exception as e:
-        # Rollback in case of error
+
         conn.rollback()
         print(f"Error adding patient: {str(e)}")
         raise
-    
+
     finally:
         if cur:
             cur.close()
@@ -78,7 +67,6 @@ def register_patient(tc_no: str, full_name: str, email: str,
 
 
 def get_profile_image(patient_id: int):
-    """Hastanın profil resmini döndürür (veya None)."""
     with db_cursor() as cur:
         cur.execute(
             "SELECT profile_img FROM patients WHERE id=%s",
@@ -89,7 +77,6 @@ def get_profile_image(patient_id: int):
 
 
 def update_profile_image(patient_id: int, profile_image):
-    """Hastanın profil resmini günceller."""
     with db_cursor() as cur:
         cur.execute(
             "UPDATE patients SET profile_img=%s WHERE id=%s",

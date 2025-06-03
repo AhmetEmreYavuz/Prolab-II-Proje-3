@@ -2,7 +2,7 @@ import tkinter as tk
 import ttkbootstrap as ttk
 from utils.db import db_cursor
 
-# ─── Kod → görsel metin eşlemeleri ────────────────────────────────────
+
 ALERT_MAP: dict[str, tuple[str, str, str]] = {
     "hypo": (
         "Hipoglisemi Riski",
@@ -49,7 +49,7 @@ ALERT_MAP: dict[str, tuple[str, str, str]] = {
 }
 
 class AlertsWindow(tk.Toplevel):
-    """Doktora gösterilen hasta uyarıları listesi."""
+
     def __init__(self, master, doctor_id: int):
         super().__init__(master)
         self.title("🔔 Hasta Uyarıları")
@@ -92,7 +92,7 @@ class AlertsWindow(tk.Toplevel):
             rows = cur.fetchall()
 
         for r in rows:
-            # ALERT_MAP içerisinden okunaklı metinleri al
+
             status, nice_type, default_msg = ALERT_MAP.get(
                 r["code"], ("Bilinmeyen", r["code"], "")
             )

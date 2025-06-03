@@ -3,15 +3,12 @@ import ttkbootstrap as ttk
 from services.symptom import add_symptom, remove_symptom, list_symptoms
 import re
 
-# ──────────────────────────────────────────────────────────────────────────────
-#  Yardımcı: metni kanonikleştir → parantez(ler) ve kenar boşlukları sil, küçük‑harf
-# ──────────────────────────────────────────────────────────────────────────────
 
 def _canon(text: str) -> str:
     """' Poliüri (sık idrara çıkma)  ' → 'poliüri'"""
     return re.sub(r"\s*\([^)]*\)", "", text).strip().lower()
 
-#  Uygulamada gösterilecek liste ‑ Görsel metinler (veritabanına aynen yazılmaz!)
+
 SYMPTOM_CHOICES: list[str] = [
     "poliüri",
     "polifaji",
@@ -25,7 +22,7 @@ SYMPTOM_CHOICES: list[str] = [
 
 
 class AddSymptomDialog(tk.Toplevel):
-    """Hastaya ait semptomları ekle / kaldır penceresi."""
+
 
     # ------------------------------------------------------------------ #
     def __init__(self, master, patient_id: int, on_added=None):
@@ -35,10 +32,10 @@ class AddSymptomDialog(tk.Toplevel):
         self.patient_id = patient_id
         self.on_added = on_added or (lambda: None)
 
-        # ───── Mevcut belirtileri çek ─────
+
         self.current_set: set[str] = {_canon(s) for s in list_symptoms(self.patient_id)}
 
-        # ───── Arayüz <GUI> iskeleti ─────
+
         main = ttk.Frame(self, padding=20)
         main.pack(fill="both", expand=True)
 
@@ -48,7 +45,7 @@ class AddSymptomDialog(tk.Toplevel):
         list_fr = ttk.Frame(main)
         list_fr.pack(fill="x")
 
-        # Checkbox'lar
+
         self.vars: dict[str, tk.BooleanVar] = {}
         for sym in SYMPTOM_CHOICES:
             var = tk.BooleanVar(value=(_canon(sym) in self.current_set))
@@ -59,17 +56,17 @@ class AddSymptomDialog(tk.Toplevel):
 
         ttk.Separator(main, orient="horizontal").pack(fill="x", pady=10)
 
-        # Serbest metin girişi
+
         ttk.Label(main, text="Diğer / özel belirti (opsiyonel)",
                   font=("Segoe UI", 10)).pack(anchor="w")
         self.extra_txt = tk.Text(main, height=3, width=40, font=("Segoe UI", 10))
         self.extra_txt.pack(fill="x", pady=(4, 0))
 
-        # Durum / hata etiketi
+
         self.status_lbl = ttk.Label(main, text="", font=("Segoe UI", 10))
         self.status_lbl.pack(fill="x", pady=(8, 0))
 
-        # Butonlar
+
         btn_fr = ttk.Frame(main)
         btn_fr.pack(pady=(15, 0), fill="x")
         ttk.Button(btn_fr, text="Kaydet", width=14, bootstyle="success",
@@ -77,30 +74,30 @@ class AddSymptomDialog(tk.Toplevel):
         ttk.Button(btn_fr, text="İptal", width=14, bootstyle="secondary",
                    command=self.destroy).pack(side="right", padx=(6, 0))
 
-        # Klavye kısayolları
+
         self.bind("<Return>", lambda *_: self._save())
         self.bind("<Escape>", lambda *_: self.destroy())
 
     # ------------------------------------------------------------------ #
     def _save(self):
-        """Seçilen / kaldırılan belirtileri senkronize eder."""
 
-        # ➊ Checkbox'lardan gelen seçimler
+
+
         chosen = {_canon(sym) for sym, var in self.vars.items() if var.get()}
 
-        # ➋ Serbest metin
+
         extra_raw = self.extra_txt.get("1.0", tk.END).strip()
         if extra_raw:
             chosen.add(_canon(extra_raw))
 
-        # Hiç seçim yoksa uyarı
+
         if not chosen:
             self.status_lbl.config(text="Lütfen en az bir belirti seçin veya yazın.",
                                    bootstyle="danger")
             return
 
         try:
-            # 🌟 Senkronizasyon: ekle / sil farkı
+
             to_add = chosen - self.current_set
             to_del = self.current_set - chosen
 

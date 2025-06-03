@@ -1,15 +1,15 @@
-"""Veritabanı şemasını güncelleyen yardımcı script."""
+
 
 from utils.db import db_cursor
 
 def update_schema():
-    """Mevcut veritabanı şemasını günceller."""
-    
+
+
     print("Veritabanı şeması güncelleniyor...")
-    
-    # Yeni sütunları ekle
+
+
     with db_cursor() as cur:
-        # 1. password_change_needed sütununu kontrol et ve yoksa ekle
+
         cur.execute("""
             SELECT COUNT(*) as count
             FROM information_schema.columns 

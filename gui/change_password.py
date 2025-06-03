@@ -6,12 +6,12 @@ from gui.utils import setup_responsive_dialog
 
 
 class ChangePasswordDialog(tk.Toplevel):
-    """Kullanıcının şifresini değiştirmek için kullanılan dialog."""
+
 
     def __init__(self, master, user_id: int, is_first_login=False):
         super().__init__(master)
 
-        # Use responsive dialog setup
+
         width, height = setup_responsive_dialog(
             self,
             "Şifre Değiştir",
@@ -24,15 +24,15 @@ class ChangePasswordDialog(tk.Toplevel):
         self.user_id = user_id
         self.is_first_login = is_first_login
 
-        # Bu bir ilk giriş ise pencere kapanmasın
+
         if is_first_login:
             self.protocol("WM_DELETE_WINDOW", lambda: None)
 
-        # Ana frame
+
         main_frame = ttk.Frame(self, padding=(int(width * 0.05), int(height * 0.05)))
         main_frame.pack(expand=True, fill="both")
 
-        # Başlık
+
         title = "Şifrenizi Değiştirin" if not is_first_login else "Hoş Geldiniz! İlk Girişte Şifrenizi Değiştirmelisiniz"
         ttk.Label(
             main_frame,
@@ -49,12 +49,12 @@ class ChangePasswordDialog(tk.Toplevel):
                 justify="left"
             ).pack(pady=(0, 15))
 
-        # Form alanları
+
         form_frame = ttk.Frame(main_frame)
         form_frame.pack(fill="x", pady=5)
         form_frame.columnconfigure(1, weight=1)
 
-        # Mevcut şifre
+
         ttk.Label(
             form_frame,
             text="Mevcut Şifre:",
@@ -65,7 +65,7 @@ class ChangePasswordDialog(tk.Toplevel):
         self.current_password.grid(row=0, column=1, sticky="ew", padx=6, pady=6)
         self.current_password.focus()
 
-        # Yeni şifre
+
         ttk.Label(
             form_frame,
             text="Yeni Şifre:",
@@ -75,7 +75,7 @@ class ChangePasswordDialog(tk.Toplevel):
         self.new_password = ttk.Entry(form_frame, font=("Segoe UI", 11), show="●")
         self.new_password.grid(row=1, column=1, sticky="ew", padx=6, pady=6)
 
-        # Yeni şifre tekrar
+
         ttk.Label(
             form_frame,
             text="Yeni Şifre Tekrar:",
@@ -85,7 +85,7 @@ class ChangePasswordDialog(tk.Toplevel):
         self.confirm_password = ttk.Entry(form_frame, font=("Segoe UI", 11), show="●")
         self.confirm_password.grid(row=2, column=1, sticky="ew", padx=6, pady=6)
 
-        # Durum mesajı
+
         self.status_label = ttk.Label(
             main_frame,
             text="",
@@ -95,11 +95,11 @@ class ChangePasswordDialog(tk.Toplevel):
         )
         self.status_label.pack(pady=(10, 0), fill="x")
 
-        # Butonlar
+
         btn_frame = ttk.Frame(main_frame)
         btn_frame.pack(fill="x", pady=(15, 0))
 
-        # Responsive button width
+
         btn_width = max(15, int(width * 0.25 / 8))
 
         ttk.Button(
@@ -119,16 +119,16 @@ class ChangePasswordDialog(tk.Toplevel):
                 width=btn_width
             ).pack(side="right", padx=(5, 0))
 
-        # Enter tuşu ile işlemi başlat
+
         self.bind("<Return>", lambda event: self._change_password())
 
     def _change_password(self):
-        """Şifre değiştirme işlemini gerçekleştirir."""
+
         current_pw = self.current_password.get().strip()
         new_pw = self.new_password.get().strip()
         confirm_pw = self.confirm_password.get().strip()
 
-        # Formun doğrulaması
+
         if not current_pw or not new_pw or not confirm_pw:
             self.status_label.config(
                 text="Tüm alanlar doldurulmalıdır!",
@@ -150,14 +150,14 @@ class ChangePasswordDialog(tk.Toplevel):
             )
             return
 
-        # Şifre değiştirme
+
         success = update_password(self.user_id, current_pw, new_pw)
         if success:
             self.status_label.config(
                 text="Şifreniz başarıyla değiştirildi!",
                 bootstyle="success"
             )
-            # Başarılı işlemden sonra 1.5 saniye sonra pencereyi kapat
+
             self.after(1500, self.destroy)
         else:
             self.status_label.config(

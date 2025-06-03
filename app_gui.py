@@ -7,7 +7,6 @@ from gui.doctor import DoctorWindow
 
 
 def main():
-    # Bootstrap temalı ana pencere
     root = ttk.Window(
         themename="superhero",
         title="💊 Diyabet Takip Sistemi",
@@ -15,16 +14,13 @@ def main():
         position=(150, 100),
         minsize=(800, 600)
     )
-    
-    # Ana container
+
     main_container = ttk.Frame(root, padding=40)
     main_container.pack(fill="both", expand=True)
-    
-    # Başlık bölümü
+
     header_frame = ttk.Frame(main_container)
     header_frame.pack(fill="x", pady=(0, 40))
-    
-    # Ana başlık
+
     title_label = ttk.Label(
         header_frame,
         text="💊 Diyabet Takip Sistemi",
@@ -32,8 +28,7 @@ def main():
         bootstyle="primary"
     )
     title_label.pack()
-    
-    # Alt başlık
+
     subtitle_label = ttk.Label(
         header_frame,
         text="Sağlıklı yaşam için akıllı dijital çözüm",
@@ -41,24 +36,20 @@ def main():
         bootstyle="secondary"
     )
     subtitle_label.pack(pady=(10, 0))
-    
-    # Özellik kartları
+
     features_frame = ttk.Frame(main_container)
     features_frame.pack(fill="x", pady=(0, 40))
-    
-    # Üç sütunlu layout
+
     for i in range(3):
         features_frame.columnconfigure(i, weight=1)
-    
-    # Özellik bilgileri
+
     features = [
         ("📊", "Glukoz Takibi", "Kan şekeri değerlerinizi kaydedin ve analiz edin"),
         ("🍎", "Diyet Planı", "Kişiselleştirilmiş beslenme önerileri alın"),
         ("🏃", "Egzersiz Takibi", "Aktivitelerinizi planlayın ve takip edin")
     ]
-    
+
     for i, (icon, title, desc) in enumerate(features):
-        # Feature card
         card_frame = ttk.LabelFrame(
             features_frame,
             text=f"{icon} {title}",
@@ -66,8 +57,7 @@ def main():
             bootstyle="info"
         )
         card_frame.grid(row=0, column=i, padx=10, sticky="ew")
-        
-        # Description
+
         ttk.Label(
             card_frame,
             text=desc,
@@ -75,12 +65,10 @@ def main():
             wraplength=200,
             justify="center"
         ).pack()
-    
-    # Buton bölümü
+
     button_frame = ttk.Frame(main_container)
     button_frame.pack(expand=True)
-    
-    # Giriş butonu
+
     login_btn = ttk.Button(
         button_frame,
         text="🔓 Sisteme Giriş Yap",
@@ -89,8 +77,7 @@ def main():
         width=25
     )
     login_btn.pack(pady=10)
-    
-    # Çıkış butonu
+
     exit_btn = ttk.Button(
         button_frame,
         text="❌ Çıkış",
@@ -99,11 +86,10 @@ def main():
         width=25
     )
     exit_btn.pack(pady=10)
-    
-    # Alt bilgi
+
     footer_frame = ttk.Frame(main_container)
     footer_frame.pack(side="bottom", fill="x")
-    
+
     ttk.Label(
         footer_frame,
         text="© 2025 Diyabet Takip Sistemi - Tüm Hakları Saklıdır",
@@ -111,15 +97,13 @@ def main():
         bootstyle="secondary",
         anchor="center"
     ).pack()
-    
-    # Enter tuşu bağlama
+
     root.bind("<Return>", lambda event: show_login(root))
-    
+
     root.mainloop()
 
 
 def show_login(root):
-    """Giriş dialog'unu göster."""
     try:
         dlg = LoginDialog(root)
         root.wait_window(dlg)
@@ -129,7 +113,7 @@ def show_login(root):
 
         uid, role = dlg.result["user_id"], dlg.result["role"]
         open_user_panel(root, uid, role)
-        
+
     except Exception as e:
         print(f"Login error: {str(e)}")
         ttk.dialogs.Messagebox.show_error(
@@ -140,7 +124,6 @@ def show_login(root):
 
 
 def open_user_panel(root, uid, role):
-    """Kullanıcı panelini aç."""
     try:
         root.withdraw()  # Ana pencereyi gizle
 
@@ -154,7 +137,7 @@ def open_user_panel(root, uid, role):
         elif role == "doctor":
             doctor_window = DoctorWindow(root, uid)
             doctor_window.protocol("WM_DELETE_WINDOW", lambda: on_panel_close(doctor_window))
-            
+
     except Exception as e:
         print(f"Panel error: {str(e)}")
         root.deiconify()

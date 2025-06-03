@@ -24,7 +24,7 @@ def evaluate_day(patient_id: int, day: date | None = None) -> None:
     day_str   = day.strftime("%d.%m.%Y")
 
     with db_cursor() as cur:
-        # <<< THIS IS THE ONLY CHANGE >>>
+
         cur.execute(
             """
             SELECT value_mg_dl
@@ -36,33 +36,33 @@ def evaluate_day(patient_id: int, day: date | None = None) -> None:
         )
         readings = [r["value_mg_dl"] for r in cur.fetchall()]
 
-        # 1) hiçbir ölçüm yok
+
         if not readings:
             add_alert(patient_id, "missing_all",
                       f"{day_str} tarihinde hiç ölçüm yapılmadı.",
                       day)
             return
 
-        # 2) yetersiz ölçüm (<3)
+
         if len(readings) < 3:
             add_alert(patient_id, "missing_few",
                       f"{day_str} tarihinde yalnızca {len(readings)} ölçüm girildi.",
                       day)
 
-        # 3) günün ortalaması, öneriler ve alert
+
         avg = sum(readings) / len(readings)
         code, lo, hi, dose, diet_sug, ex_sug = next(
             lvl for lvl in LEVELS if lvl[1] <= avg <= lvl[2]
         )
 
-        # — ortalama alert’ini ekle
+
         if code in AVG_LEVEL_MSG:
             add_alert(patient_id,
                       code,
                       AVG_LEVEL_MSG[code],
                       day)
 
-        # — insulin_suggestions tablosuna upsert
+
         cur.execute(
             """
             INSERT INTO insulin_suggestions
@@ -75,7 +75,7 @@ def evaluate_day(patient_id: int, day: date | None = None) -> None:
             (patient_id, day, avg, dose)
         )
 
-        # 4) Kritik eşikler (<70 / >200) — use day_str, no time:
+
         if min(readings) < 70:
             add_alert(
                 patient_id,

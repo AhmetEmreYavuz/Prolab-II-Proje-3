@@ -18,22 +18,21 @@ class AddPatientWindow:
         self.profile_image = None
         self.image_path = None
 
-        # Clear the master window
+
         for widget in master.winfo_children():
             widget.destroy()
 
         self._create_patient_form()
 
     def _create_patient_form(self):
-        """Create modern patient registration form."""
-        # Main container with padding
+
         main_container = ttk.Frame(self.master, padding=20)
         main_container.pack(fill="both", expand=True)
 
-        # Header with back button and title
+
         self._create_header(main_container)
 
-        # Scrollable content
+
         canvas = tk.Canvas(main_container, bg='#2B3E50')
         scrollbar = ttk.Scrollbar(main_container, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
@@ -46,36 +45,36 @@ class AddPatientWindow:
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Form content
+
         form_container = ttk.Frame(scrollable_frame, padding=20)
         form_container.pack(fill="both", expand=True)
 
-        # Configure responsive layout
+
         form_container.columnconfigure(0, weight=2)
         form_container.columnconfigure(1, weight=1)
 
-        # Left side - Form fields
+
         self._create_form_fields(form_container)
 
-        # Right side - Profile image
+
         self._create_image_section(form_container)
 
-        # Info section
+
         self._create_info_section(form_container)
 
-        # Action buttons
+
         self._create_action_buttons(form_container)
 
-        # Pack canvas and scrollbar
+
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
     def _create_header(self, parent):
-        """Create header with back button and title."""
+
         header_frame = ttk.Frame(parent)
         header_frame.pack(fill="x", pady=(0, 20))
 
-        # Back button
+
         back_btn = ttk.Button(
             header_frame,
             text="◀ Geri",
@@ -85,7 +84,7 @@ class AddPatientWindow:
         )
         back_btn.pack(side="left")
 
-        # Title
+
         title_label = ttk.Label(
             header_frame,
             text="➕ Yeni Hasta Ekle",
@@ -95,7 +94,7 @@ class AddPatientWindow:
         title_label.pack(side="left", padx=(20, 0))
 
     def _create_form_fields(self, parent):
-        """Create form input fields."""
+
         form_card = ttk.LabelFrame(
             parent,
             text="👤 Hasta Bilgileri",
@@ -104,7 +103,7 @@ class AddPatientWindow:
         )
         form_card.grid(row=0, column=0, sticky="nsew", padx=(0, 15))
 
-        # Form fields data
+
         fields = [
             ("🆔 TC Kimlik No:", "tc", "11 haneli TC kimlik numarası"),
             ("👤 Ad Soyad:", "name", "Hastanın tam adı"),
@@ -114,18 +113,18 @@ class AddPatientWindow:
 
         self.entries = {}
         for i, (label, key, placeholder) in enumerate(fields):
-            # Field container
+
             field_frame = ttk.Frame(form_card)
             field_frame.pack(fill="x", pady=(0, 15))
 
-            # Label
+
             ttk.Label(
                 field_frame,
                 text=label,
                 font=("Segoe UI", 11, "bold")
             ).pack(anchor="w", pady=(0, 5))
 
-            # Entry
+
             entry = ttk.Entry(
                 field_frame,
                 font=("Segoe UI", 11),
@@ -133,7 +132,7 @@ class AddPatientWindow:
             )
             entry.pack(fill="x")
 
-            # Placeholder hint
+
             hint_label = ttk.Label(
                 field_frame,
                 text=placeholder,
@@ -144,11 +143,11 @@ class AddPatientWindow:
 
             self.entries[key] = entry
 
-        # Gender selection
+
         self._create_gender_selection(form_card)
 
     def _create_gender_selection(self, parent):
-        """Create gender selection."""
+
         gender_frame = ttk.Frame(parent)
         gender_frame.pack(fill="x", pady=(0, 10))
 
@@ -158,7 +157,7 @@ class AddPatientWindow:
             font=("Segoe UI", 11, "bold")
         ).pack(anchor="w", pady=(0, 8))
 
-        # Gender radio buttons
+
         self.gender = tk.StringVar(value="F")
         gender_options = [
             ("👩 Kadın", "F"),
@@ -179,7 +178,7 @@ class AddPatientWindow:
             ).pack(side="left", padx=(0, 20))
 
     def _create_image_section(self, parent):
-        """Create profile image section."""
+
         image_card = ttk.LabelFrame(
             parent,
             text="📷 Profil Resmi",
@@ -188,12 +187,12 @@ class AddPatientWindow:
         )
         image_card.grid(row=0, column=1, sticky="nsew")
 
-        # Image preview container
+
         self.image_container = ttk.Frame(image_card, width=200, height=200)
         self.image_container.pack(pady=(0, 15))
         self.image_container.pack_propagate(False)
 
-        # Default image placeholder
+
         self.img_label = ttk.Label(
             self.image_container,
             text="🖼️\nResim Seçilmedi",
@@ -203,7 +202,7 @@ class AddPatientWindow:
         )
         self.img_label.pack(fill="both", expand=True)
 
-        # Image selection button
+
         ttk.Button(
             image_card,
             text="📁 Resim Seç",
@@ -212,7 +211,7 @@ class AddPatientWindow:
             width=20
         ).pack(fill="x", pady=(0, 10))
 
-        # Info text
+
         ttk.Label(
             image_card,
             text="• En fazla 2MB\n• JPG veya PNG formatı\n• Kare/portre önerilir",
@@ -222,7 +221,7 @@ class AddPatientWindow:
         ).pack(anchor="w")
 
     def _create_info_section(self, parent):
-        """Create info section."""
+
         info_card = ttk.LabelFrame(
             parent,
             text="ℹ️ Bilgilendirme",
@@ -240,11 +239,11 @@ class AddPatientWindow:
         ).pack(fill="x")
 
     def _create_action_buttons(self, parent):
-        """Create action buttons."""
+
         button_frame = ttk.Frame(parent)
         button_frame.grid(row=2, column=0, columnspan=2, pady=(20, 0))
 
-        # Save button
+
         ttk.Button(
             button_frame,
             text="💾 Hasta Ekle",
@@ -253,7 +252,7 @@ class AddPatientWindow:
             width=20
         ).pack(side="left", padx=(0, 10))
 
-        # Clear button
+
         ttk.Button(
             button_frame,
             text="🗑️ Temizle",
@@ -262,7 +261,7 @@ class AddPatientWindow:
             width=20
         ).pack(side="left", padx=(0, 10))
 
-        # Cancel button
+
         ttk.Button(
             button_frame,
             text="❌ İptal",
@@ -272,7 +271,7 @@ class AddPatientWindow:
         ).pack(side="right")
 
     def _clear_form(self):
-        """Clear all form fields."""
+
         for entry in self.entries.values():
             entry.delete(0, tk.END)
         self.gender.set("F")
@@ -282,7 +281,7 @@ class AddPatientWindow:
             self.img_label.image = None
 
     def _select_image(self):
-        """Handle image selection."""
+
         file_types = [
             ("Resim Dosyaları", "*.jpg *.jpeg *.png"),
             ("JPEG", "*.jpg *.jpeg"),
@@ -300,18 +299,18 @@ class AddPatientWindow:
             return
 
         try:
-            # Load and process image
+
             with Image.open(file_path) as img:
-                # Create thumbnail
+
                 img.thumbnail((180, 180))
 
-                # Show preview
+
                 photo_image = ImageTk.PhotoImage(img)
                 self.img_label.config(text="")
                 self.img_label.configure(image=photo_image)
                 self.img_label.image = photo_image
 
-                # Store image data
+
                 with io.BytesIO() as buffer:
                     if file_path.lower().endswith(".png"):
                         img.save(buffer, format="PNG")
@@ -330,8 +329,8 @@ class AddPatientWindow:
             )
 
     def _save_patient(self):
-        """Save patient with validation."""
-        # Get form data
+
+
         tc = self.entries["tc"].get().strip()
         name = self.entries["name"].get().strip()
         email = self.entries["mail"].get().strip()
@@ -353,7 +352,7 @@ class AddPatientWindow:
         else:
             dob_date = None
 
-        # Validate required fields
+
         if not tc or not name or not email:
             ttk.dialogs.Messagebox.show_error(
                 "⚠️ Zorunlu Alanlar\n\nTC No, Ad Soyad ve E-posta alanları doldurulmalıdır!",
@@ -362,7 +361,7 @@ class AddPatientWindow:
             )
             return
 
-        # Validate TC number
+
         if not tc.isdigit() or len(tc) != 11:
             ttk.dialogs.Messagebox.show_error(
                 "⚠️ Geçersiz TC No\n\nTC kimlik numarası 11 haneli rakamlardan oluşmalıdır!",
@@ -371,7 +370,7 @@ class AddPatientWindow:
             )
             return
 
-        # Validate email
+
         if "@" not in email or "." not in email:
             ttk.dialogs.Messagebox.show_error(
                 "⚠️ Geçersiz E-posta\n\nLütfen geçerli bir e-posta adresi giriniz!",
@@ -380,7 +379,7 @@ class AddPatientWindow:
             )
             return
 
-        # Save patient
+
         try:
             uid, pw = register_patient(
                 tc, name, email,
@@ -390,7 +389,7 @@ class AddPatientWindow:
                 self.profile_image
             )
 
-            # Show success message
+
             from utils.emailer import USE_SMTP
 
             if USE_SMTP:
@@ -415,7 +414,7 @@ class AddPatientWindow:
                 parent=self.master
             )
 
-            # Go back and refresh
+
             self.on_added()
             self.on_back()
 

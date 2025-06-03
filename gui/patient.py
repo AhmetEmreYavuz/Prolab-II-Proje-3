@@ -3,25 +3,18 @@ import tkinter as tk
 import ttkbootstrap as ttk
 from datetime import date, datetime, time
 from services.glucose import add_glucose, list_today, list_for_date
-
+from tkinter import TclError
 from services.symptom import list_symptoms  # 追加
 from ttkbootstrap.scrolled import ScrolledFrame   # +++ EKLENDİ +++
+from gui.status import StatusWindow
 
-
-import re     #  ← yeni
-
-
-
-from services.daily import upsert_status
 from services.rules import evaluate_day
 from services.patient import get_profile_image
 from utils.db import db_cursor
 from PIL import Image, ImageTk
 import io
 
-# -----------------------------------------------------------------------------#
-#  Slot aralıkları: vakit -> (başlangıç, bitiş) 24 saat formatında
-# -----------------------------------------------------------------------------#
+
 SLOT_RANGES = {
     "sabah":  (time(7, 0),  time(8, 0)),
     "ogle":   (time(12, 0), time(13, 0)),
@@ -29,7 +22,7 @@ SLOT_RANGES = {
     "aksam":  (time(18, 0), time(19, 0)),
     "gece":   (time(22, 0), time(23, 0)),
 }
-# Bu sıraya göre özet ve kümülatif ortalama hesaplanır
+
 SLOT_ORDER = ["sabah", "ogle", "ikindi", "aksam", "gece"]
 
 
@@ -37,9 +30,7 @@ SLOT_ORDER = ["sabah", "ogle", "ikindi", "aksam", "gece"]
 class PatientWindow(tk.Toplevel):
     """Modern hasta paneli – dashboard ve navigation sistemi."""
 
-    # ------------------------------------------------------------------ #
-    #   KURULUM
-    # ------------------------------------------------------------------ #
+
     def __init__(self, master, patient_id: int, skip_password_change: bool = False):
         super().__init__(master)
         self.patient_id = patient_id
@@ -47,25 +38,31 @@ class PatientWindow(tk.Toplevel):
         self.title("💊 Hasta Paneli")
         self.geometry("1400x900")
         self.configure(bg="#2b3e50")
-        
 
 
-        # Ekranın ortasına yerleştir
         self.update_idletasks()
         w, h = self.winfo_width(), self.winfo_height()
         x = (self.winfo_screenwidth() // 2) - (w // 2)
         y = (self.winfo_screenheight() // 2) - (h // 2)
         self.geometry(f"{w}x{h}+{x}+{y}")
 
-        # Hastaya ait temel verileri getir
+
+
+
         self._load_patient_info(skip_password_change)
 
-        # Dashboard oluştur
-        self._create_dashboard()
 
-    # ------------------------------------------------------------------ #
+        try:
+            self._create_dashboard()
+        except TclError as e:
+            if "Horizontal.TScrollbar.thumb" in str(e):
+
+                return
+
+            raise
+
     #   HASTA ADI & İLK ŞİFRE KONTROLÜ
-    # ------------------------------------------------------------------ #
+
     def _load_patient_info(self, skip_password_change: bool):
         try:
             with db_cursor() as cur:
@@ -91,28 +88,26 @@ class PatientWindow(tk.Toplevel):
             print("Hasta bilgisi alınamadı:", err)
             self.patient_name = "Hasta"
 
-    # ------------------------------------------------------------------ #
-    #   DASHBOARD BİRLEŞTİRME
-    # ------------------------------------------------------------------ #
-    def _create_dashboard(self):
-        """Hasta panelini kaydırılabilir hale getirir (sürümden bağımsız)."""
 
-        # Önce eski widget'ları kaldır
+    def _create_dashboard(self):
+
+
+
         for w in self.winfo_children():
             w.destroy()
 
-        # Kaydırılabilir çerçeve
+
         self.scroll_fr = ScrolledFrame(self, autohide=True)
         self.scroll_fr.pack(fill="both", expand=True)
 
-        # < 1.10 sürümlerinde 'scrollable_frame' yok; kendisi iç çerçevedir.
+
         interior = getattr(self.scroll_fr, "scrollable_frame", self.scroll_fr)
 
-        # Asıl içerik buraya
+
         main = ttk.Frame(interior, padding=20)
         main.pack(fill="both", expand=True)
 
-        # Alt bileşenler
+
         self._create_header(main)
         self._create_dashboard_grid(main)
         self._create_footer(main)
@@ -120,12 +115,12 @@ class PatientWindow(tk.Toplevel):
         self._refresh_dashboard()
         self.scroll_fr.update_idletasks()
 
-    # ============================== HEADER ============================= #
+
     def _create_header(self, parent):
         hdr = ttk.Frame(parent)
         hdr.pack(fill="x", pady=(0, 25))
 
-        # --- Profil resmi
+
         wrapper = ttk.Frame(hdr, width=100, height=100)
         wrapper.pack(side="left", padx=(0, 20))
         wrapper.pack_propagate(False)
@@ -133,7 +128,7 @@ class PatientWindow(tk.Toplevel):
         self.profile_lbl.pack(fill="both", expand=True)
         self._load_profile_image()
 
-        # --- Başlık
+
         box = ttk.Frame(hdr)
         box.pack(side="left", fill="x", expand=True)
 
@@ -152,7 +147,7 @@ class PatientWindow(tk.Toplevel):
             bootstyle="secondary",
         ).pack(anchor="w", pady=(5, 0))
 
-    # =============================  GRID  ============================== #
+
     def _create_dashboard_grid(self, parent):
         grid = ttk.Frame(parent)
         grid.pack(fill="both", expand=True)
@@ -167,7 +162,7 @@ class PatientWindow(tk.Toplevel):
         self._create_lifestyle_card(grid)   # (1,0)
         self._create_actions_card(grid)     # (1,1)
 
-    # ===================== GLUKOZ ÖLÇÜM KARTI ========================= #
+
     def _create_glucose_card(self, parent):
         card = ttk.LabelFrame(
             parent, text="📊 Kan Şekeri Takibi", padding=20, bootstyle="info"
@@ -181,7 +176,7 @@ class PatientWindow(tk.Toplevel):
             bootstyle="primary",
         ).pack(anchor="w", pady=(0, 10))
 
-        # ---------- Üst giriş satırı
+
         inp = ttk.Frame(card)
         inp.pack(fill="x", pady=(0, 10))
 
@@ -215,7 +210,7 @@ class PatientWindow(tk.Toplevel):
                 slot_fr, text=txt, variable=self.slot_var, value=val, bootstyle="info"
             ).pack(side="left", padx=2)
 
-        # ---------- Buton satırı (Kaydet + Gün Sonu yan yana)
+
         btn_fr = ttk.Frame(card)
         btn_fr.pack(anchor="w", pady=(5, 15))
 
@@ -230,12 +225,12 @@ class PatientWindow(tk.Toplevel):
         )
         self.endday_btn.pack(side="left")
 
-        # ---------- Özet & geçmiş bölümleri
+
         self.glucose_summary_frame = ttk.Frame(card)
         self.glucose_summary_frame.pack(fill="x", pady=(0, 10))
         self._build_today_history(card)
 
-    # ---------- Bugünkü ölçümler tablosu
+
     def _build_today_history(self, parent):
         frm = ttk.Frame(parent)
         frm.pack(fill="both", expand=True)
@@ -260,7 +255,7 @@ class PatientWindow(tk.Toplevel):
         self.history_tree.pack(side="left", fill="both", expand=True)
         scr.pack(side="right", fill="y")
 
-    # ===================== GÜNLÜK ÖZET KARTI ========================== #
+
     def _create_summary_card(self, parent):
         card = ttk.LabelFrame(
             parent, text="📋 Günlük Özet", padding=20, bootstyle="success"
@@ -269,12 +264,11 @@ class PatientWindow(tk.Toplevel):
         self.summary_content_frame = ttk.Frame(card)
         self.summary_content_frame.pack(fill="both", expand=True)
 
-    # ================ DİYET & EGZERSİZ KARTI ========================= #
-    #  (fonksiyon gövdesi orijinal hâliyle bırakıldı)
+
+
     def _create_lifestyle_card(self, parent):
-        """
-        Diyet, egzersiz ve öneri kutularını içeren kart.
-        """
+
+        from datetime import date
         lifestyle_card = ttk.LabelFrame(
             parent, text="🍎 Diyet ve Egzersiz",
             padding=20, bootstyle="warning"
@@ -282,7 +276,7 @@ class PatientWindow(tk.Toplevel):
         lifestyle_card.grid(row=1, column=0, sticky="nsew",
                             padx=(0, 10), pady=(10, 0))
 
-        # ────────────────── DİYET PLANı ────────────────── #
+
         diet_sec = ttk.LabelFrame(
             lifestyle_card, text="🥗 Diyet Planı",
             padding=15, bootstyle="info"
@@ -293,7 +287,7 @@ class PatientWindow(tk.Toplevel):
                   font=("Segoe UI", 11, "bold")
                   ).pack(anchor="w", pady=(0, 5))
 
-        row = ttk.Frame(diet_sec);
+        row = ttk.Frame(diet_sec)
         row.pack(fill="x", pady=(0, 10))
 
         self.diet_cmb = ttk.Combobox(
@@ -309,7 +303,7 @@ class PatientWindow(tk.Toplevel):
             variable=self.diet_chk, bootstyle="round-toggle"
         ).pack(side="left")
 
-        # ────────────────── EGZERSİZ PLANı ────────────────── #
+
         ex_sec = ttk.LabelFrame(
             lifestyle_card, text="🏃 Egzersiz Planı",
             padding=15, bootstyle="secondary"
@@ -320,7 +314,7 @@ class PatientWindow(tk.Toplevel):
                   font=("Segoe UI", 11, "bold")
                   ).pack(anchor="w", pady=(0, 5))
 
-        row2 = ttk.Frame(ex_sec);
+        row2 = ttk.Frame(ex_sec)
         row2.pack(fill="x", pady=(0, 10))
 
         self.ex_cmb = ttk.Combobox(
@@ -336,13 +330,25 @@ class PatientWindow(tk.Toplevel):
             variable=self.ex_chk, bootstyle="round-toggle"
         ).pack(side="left")
 
-        # Durum kaydet butonu
+
+        ttk.Separator(lifestyle_card, orient="horizontal").pack(fill="x", pady=(10, 10))
+        ttk.Label(
+            lifestyle_card, text="📅 Durum Tarihi (GG.AA.YYYY):",
+            font=("Segoe UI", 11, "bold")
+        ).pack(anchor="w")
+        self.status_date_ent = ttk.Entry(
+            lifestyle_card, font=("Segoe UI", 11), width=12
+        )
+        self.status_date_ent.insert(0, date.today().strftime("%d.%m.%Y"))
+        self.status_date_ent.pack(anchor="w", pady=(0, 15))
+
+
         ttk.Button(
             lifestyle_card, text="💾 Durum Kaydet",
             command=self._save_status, bootstyle="success", width=20
-        ).pack(pady=(10, 0))
+        ).pack(pady=(0, 10))
 
-        # ─────────────── DİYET-EGZERSİZ ÖNERİSİ ─────────────── #
+
         suggest_fr = ttk.LabelFrame(
             lifestyle_card,
             text="📑 Diyet Planı ve Egzersiz Önerisi",
@@ -351,49 +357,40 @@ class PatientWindow(tk.Toplevel):
         suggest_fr.pack(fill="x", pady=(15, 0))
 
         self.suggest_lbl = ttk.Label(
-            suggest_fr, text="—",  # ilk başta boş
+            suggest_fr, text="—",
             font=("Segoe UI", 11),
             bootstyle="secondary",
             justify="left", wraplength=500
         )
         self.suggest_lbl.pack(anchor="w")
 
-        # Öneriyi hesaplayan buton
+
         ttk.Button(
             suggest_fr,
             text="💡 Plan Önerisi",
             bootstyle="primary-outline",
             width=18,
-            command=self._show_plan_suggestion  # ⇒ fonksiyonunuz
+            command=self._show_plan_suggestion
         ).pack(anchor="e", pady=(8, 0))
 
 
-    # ==================== HIZLI İŞLEMLER KARTI ======================== #
     def _create_actions_card(self, parent):
-        """
-        Sağ üstteki “Hızlı İşlemler” kartını oluşturur.
-        Yeni sırayla 2 × 3’lük grid:
-            (0,0) Glukoz Geçmişi   | (0,1) Analiz Raporu
-            (1,0) İnsülin Önerisi  | (1,1) Verileri Yenile
-            (2,0) Şifre Değiştir   | — (boş)
-        Altında ipucu-öneri metni.
-        """
+
         card = ttk.LabelFrame(
             parent, text="⚡ Hızlı İşlemler", padding=20, bootstyle="primary"
         )
         card.grid(row=1, column=1, sticky="nsew", padx=(10, 0), pady=(10, 0))
 
-        # 2 sütunlu esnek grid
         for col in (0, 1):
             card.columnconfigure(col, weight=1)
 
-        # --- İşlem butonları -------------------------------------------------
         actions = [
             ("📊 Glukoz Geçmişi", "info", self._show_history, 0, 0),
             ("📈 Analiz Raporu", "success", self._show_analysis, 0, 1),
             ("💉 İnsülin Önerisi", "warning", self._show_insulin_suggestion, 1, 0),
-            ("🔄 Verileri Yenile", "secondary", self._refresh_dashboard, 1, 1),
-            ("🔒 Şifre Değiştir", "danger", self._change_password, 2, 0),
+            ("🔄 Yenile", "secondary", self._refresh_dashboard, 1, 1),
+            ("📋 Günlük Durum", "warning", self._show_status, 2, 0),
+            ("🔒 Şifre Değiştir", "danger", self._change_password, 2, 1),
         ]
 
         for text, style, cmd, r, c in actions:
@@ -405,7 +402,9 @@ class PatientWindow(tk.Toplevel):
                 width=18,
             ).grid(row=r, column=c, padx=5, pady=5, sticky="ew")
 
-        # --- İpucu - Öneriler alanı -----------------------------------------
+
+
+
         tips_frame = ttk.Frame(card)
         tips_frame.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(15, 0))
 
@@ -429,7 +428,7 @@ class PatientWindow(tk.Toplevel):
         )
         self.tips_label.pack(anchor="w")
 
-        # ——----- BURASI YENİ ——-----
+
         self.symptom_lbl = ttk.Label(
             tips_frame,
             text="Hastadaki belirtiler: —",
@@ -439,10 +438,10 @@ class PatientWindow(tk.Toplevel):
         )
         self.symptom_lbl.pack(anchor="w", pady=(8, 0))
 
-        # etiketi ilk kez doldur
+
         self._update_symptom_info()
 
-    # =============================== FOOTER =========================== #
+
     def _create_footer(self, parent):
         f = ttk.Frame(parent)
         f.pack(fill="x")
@@ -456,7 +455,7 @@ class PatientWindow(tk.Toplevel):
             f, text="❌ Çıkış", bootstyle="danger-outline", width=15, command=self.destroy
         ).pack(side="right")
 
-    # ==================== PROFİL RESMİ YÜKLEME ======================== #
+
     def _load_profile_image(self):
         data = get_profile_image(self.patient_id)
         try:
@@ -472,19 +471,16 @@ class PatientWindow(tk.Toplevel):
             print("Profil resmi hatası:", err)
             self.profile_lbl.config(text="👤", font=("Segoe UI", 40), foreground="white")
 
-    # ====================== ÖLÇÜM KAYDETME ============================ #
+
 
     def _save_glucose(self):
-        """
-        Tarih alanındaki gün, daha önce _end_day ile kapatılmışsa ölçüm reddedilir;
-        aksi hâlde normal akış devam eder.
-        """
+
         try:
-            # --- Tarih + saat  (önce alın ki kapalı-gün kontrolü yapılsın)
+
             dt_txt = f"{self.date_ent.get().strip()} {self.time_ent.get().strip()}"
             dt = datetime.strptime(dt_txt, "%d.%m.%Y %H:%M:%S")
 
-            # --- Kapalı gün kontrolü
+
             if getattr(self, "closed_date", None) == dt.date():
                 ttk.dialogs.Messagebox.show_warning(
                     "Bu gün için 'Gün Sonu' yapıldı; yeni ölçüm ekleyemezsiniz.",
@@ -493,13 +489,13 @@ class PatientWindow(tk.Toplevel):
                 )
                 return
 
-            # --- Glukoz değeri
+
             value = float(self.val_ent.get().strip().replace(",", "."))
             if value <= 0:
                 raise ValueError("Pozitif değer giriniz.")
 
-            # --- Vakit doğrulama
-            slot = self.slot_var.get()  # sabah / öğle / … / extra
+
+            slot = self.slot_var.get()
             if slot in SLOT_RANGES:
                 lo, hi = SLOT_RANGES[slot]
                 if not (lo <= dt.time() <= hi):
@@ -509,7 +505,7 @@ class PatientWindow(tk.Toplevel):
                         parent=self,
                     )
                     return
-            else:  # extra
+            else:
                 ttk.dialogs.Messagebox.show_warning(
                     "Bu ölçüm izinli saat aralığının dışında.\n"
                     "Kaydedildi ama ortalamaya dahil edilmeyecek.",
@@ -517,7 +513,7 @@ class PatientWindow(tk.Toplevel):
                     parent=self,
                 )
 
-            # --- Veritabanına yaz
+
             add_glucose(self.patient_id, value, dt)
             self.val_ent.delete(0, tk.END)
             self._refresh_dashboard()
@@ -527,77 +523,69 @@ class PatientWindow(tk.Toplevel):
                 f"Hata:\n{err}", "Kayıt Hatası", parent=self
             )
 
-    # ================== DİYET & EGZERSİZ KAYDETME ===================== #
+
     def _save_status(self):
+
+        from datetime import datetime
+
+
+        date_str = self.status_date_ent.get().strip()
         try:
-            diet_map = {
-                "🚫 Şekersiz": "sugar_free",
-                "⚖️ Dengeli": "balanced",
-                "🥦 Düşük Şeker": "low_sugar",
-            }
-            ex_map = {
-                "🚶 Yürüyüş": "walk",
-                "🚴 Bisiklet": "bike",
-                "🏥 Klinik Egzersiz": "clinic",
-            }
-            
-            diet_type = diet_map.get(self.diet_cmb.get(), "balanced")
-            ex_type = ex_map.get(self.ex_cmb.get(), "walk")
-            diet_done = self.diet_chk.get()
-            ex_done = self.ex_chk.get()
-            
-            # Veritabanına kaydet
-            upsert_status(
-                self.patient_id, diet_type, diet_done, ex_type, ex_done
-            )
-            
-            # Başarı mesajı ve detaylı bilgi
-            success_msg = (
-                f"✅ Bugünün durumu kaydedildi!\n\n"
-                f"🥗 Diyet: {self.diet_cmb.get()} ({'✅ Uygulandı' if diet_done else '❌ Uygulanmadı'})\n"
-                f"🏃 Egzersiz: {self.ex_cmb.get()} ({'✅ Yapıldı' if ex_done else '❌ Yapılmadı'})\n\n"
-                f"💡 Bu veriler doktor panelinde gerçek zamanlı olarak görülecektir."
-            )
-            
-            ttk.dialogs.Messagebox.show_info(
-                success_msg, "📊 Durum Kaydedildi", parent=self
-            )
-            
-            print(f"DEBUG: Hasta {self.patient_id} için diyet/egzersiz durumu kaydedildi:")
-            print(f"  - Diyet: {diet_type} (done: {diet_done})")
-            print(f"  - Egzersiz: {ex_type} (done: {ex_done})")
-            
-        except Exception as err:
+            day = datetime.strptime(date_str, "%d.%m.%Y").date()
+        except ValueError:
             ttk.dialogs.Messagebox.show_error(
-                f"Durum kaydedilemedi:\n{str(err)}", 
-                "❌ Hata", 
+                "Geçersiz tarih formatı! Lütfen GG.AA.YYYY biçiminde girin.",
+                "Hata",
                 parent=self
             )
+            return
 
-    # ==================== DASHBOARD YENİLEME ========================== #
+
+        diet_map = {
+            "🚫 Şekersiz": "sugar_free",
+            "⚖️ Dengeli": "balanced",
+            "🥦 Düşük Şeker": "low_sugar",
+        }
+        ex_map = {
+            "🚶 Yürüyüş": "walk",
+            "🚴 Bisiklet": "bike",
+            "🏥 Klinik Egzersiz": "clinic",
+        }
+        diet_type = diet_map.get(self.diet_cmb.get(), "balanced")
+        exercise_type = ex_map.get(self.ex_cmb.get(), "walk")
+        diet_done = self.diet_chk.get()
+        exercise_done = self.ex_chk.get()
+
+
+        from services.daily import upsert_status
+        upsert_status(
+            self.patient_id,
+            diet_type,
+            diet_done,
+            exercise_type,
+            exercise_done,
+            day
+        )
+
+
+        ttk.dialogs.Messagebox.show_info(
+            f"{day.strftime('%d.%m.%Y')} için durum kaydedildi.",
+            "Başarılı",
+            parent=self
+        )
+
+
     def _refresh_dashboard(self):
-        """
-        Pencerenin sol alt ve sağ üst bölümlerini (geçmiş tablosu + özet kartı)
-        günceller.  Ayrıca slot–bazlı kümülatif ortalamaları hesaplar, eksik /
-        yetersiz veri uyarılarını gösterir ve rules.evaluate_day'i tetikler.
-        """
-        # Tarih giriş kutusundaki tarihi kullan
-        try:
-            selected_date = datetime.strptime(self.date_ent.get().strip(), "%d.%m.%Y").date()
-        except (ValueError, AttributeError):
-            selected_date = date.today()
-            
-        readings = list_for_date(self.patient_id, selected_date) or []
 
-        # --- Önce ekrandaki eski kayıtları temizle --------------------
+        readings = list_for_date(self.patient_id, self.current_date) or []
+
+
         for item_id in self.history_tree.get_children():
             self.history_tree.delete(item_id)
         for w in self.summary_content_frame.winfo_children():
             w.destroy()
 
-        # ───────────────────────────────────────────────────────────────
-        #   Ölçüm hiç yoksa erken çık
-        # ───────────────────────────────────────────────────────────────
+
         if not readings:
             ttk.Label(
                 self.summary_content_frame,
@@ -605,13 +593,13 @@ class PatientWindow(tk.Toplevel):
                 font=("Segoe UI", 14, "bold"),
                 bootstyle="warning",
             ).pack(pady=(20, 10))
-            evaluate_day(self.patient_id, selected_date)
+            evaluate_day(self.patient_id, date.today())
             return
 
-        # --- Beş vakte göre kümülatif ortalamalar ---------------------
+
         slot_avgs, slot_vals = self._compute_slot_averages(readings)
 
-        # Eksik vakit uyarısı
+
         missing = [s.capitalize() for s, v in slot_vals.items() if not v]
         if missing:
             ttk.dialogs.Messagebox.show_warning(
@@ -620,14 +608,14 @@ class PatientWindow(tk.Toplevel):
                 "Eksik Ölçüm", parent=self
             )
 
-        # Az sayıda ölçüm uyarısı
+
         if len(readings) <= 3:
             ttk.dialogs.Messagebox.show_warning(
                 "Yetersiz veri! Ortalama hesaplaması güvenilir değildir.",
                 "Uyarı", parent=self
             )
 
-        # --- Özet kartı ------------------------------------------------
+
         def _row(frm, label, value):
             r = ttk.Frame(frm);
             r.pack(fill="x", pady=2)
@@ -651,7 +639,7 @@ class PatientWindow(tk.Toplevel):
                 f"{avg_val:.1f} mg/dL" if avg_val is not None else "—"
             )
 
-        # --- Geçmiş tablosunu doldur ----------------------------------
+
         for r in readings:
             t_str = r["reading_dt"].strftime("%H:%M")
             val = r["value_mg_dl"]
@@ -668,21 +656,21 @@ class PatientWindow(tk.Toplevel):
         self.history_tree.tag_configure("danger", background="#f8d7da")
         self.history_tree.tag_configure("success", background="#d4edda")
 
-        # 8) Günlük ortalama & etiket/öneri güncellemeleri
+
         day_avg = sum(r["value_mg_dl"] for r in readings) / len(readings)
         self._latest_avg = day_avg
 
         self._update_symptom_info()
         self._update_lifestyle_suggestion(day_avg)
 
-        # 9) Kural tabanlı uyarılar
-        evaluate_day(self.patient_id, selected_date)
 
-        # ★ Scroll bölgesini yeni boyuta uydur
+        evaluate_day(self.patient_id, self.current_date)
+
+
         if hasattr(self, "scroll_fr"):
             self.scroll_fr.update_idletasks()
 
-        # -------------------- Özet kartı güncelle
+
     def _update_summary_card(self, readings, avg, min_v, max_v):
         stats_fr = ttk.Frame(self.summary_content_frame)
         stats_fr.pack(fill="x", pady=(0, 15))
@@ -706,7 +694,7 @@ class PatientWindow(tk.Toplevel):
                 side="right"
             )
 
-        # Durum mesajı
+
         status_fr = ttk.Frame(self.summary_content_frame)
         status_fr.pack(fill="x", pady=(15, 0))
         ttk.Label(
@@ -726,7 +714,7 @@ class PatientWindow(tk.Toplevel):
             status_fr, text=txt, font=("Segoe UI", 11), bootstyle=st, justify="center"
         ).pack()
 
-    # ==================== YAN PENCERELER ============================== #
+
     def _show_history(self):
         from gui.glucose_history import GlucoseHistoryWindow
         GlucoseHistoryWindow(self, self.patient_id, self.patient_name)
@@ -740,10 +728,7 @@ class PatientWindow(tk.Toplevel):
         ChangePasswordDialog(self, self.patient_id)
 
     def _end_day(self):
-        """
-        'Gün Sonu' – şu an tarih giriş kutusunda ne yazıyorsa o günü kapat
-        ve özet kartını o günde kalan ölçümlerle yeniden oluştur.
-        """
+
         try:
             sel_day = datetime.strptime(self.date_ent.get().strip(), "%d.%m.%Y").date()
         except ValueError:
@@ -751,7 +736,8 @@ class PatientWindow(tk.Toplevel):
             return
 
         self.closed_date = sel_day
-        self._refresh_dashboard()  # sağ paneli tazele
+        self.current_date = sel_day
+        self._refresh_dashboard()
 
         ttk.dialogs.Messagebox.show_info(
             f"{sel_day.strftime('%d.%m.%Y')} için gün sonu tamamlandı.\n"
@@ -760,28 +746,17 @@ class PatientWindow(tk.Toplevel):
         )
 
     def _compute_slot_averages(self, readings):
-        """
-        SLOT_ORDER = [sabah, öğle, ikindi, akşam, gece]
-        * sabah ort.:   sadece sabah ölçümleri
-        * öğle  ort.:   sabah + öğle
-        * ikindi ort.:  sabah + öğle + ikindi
-        ... vb.
 
-        Dönüş:
-            (averages_dict, values_dict)
-            averages_dict -> {slot: ortalama veya None}
-            values_dict   -> {slot: [değerler]}
-        """
-        # Ölçüm değerlerini slot‐lara dağıt
+
         slot_values = {s: [] for s in SLOT_ORDER}
         for rec in readings:
             tm = rec["reading_dt"].time()
             for slot, (lo, hi) in SLOT_RANGES.items():
                 if lo <= tm <= hi:
                     slot_values[slot].append(rec["value_mg_dl"])
-                    break  # eşleşen ilk slot yeterli
+                    break
 
-        # Kümülatif ortalamaları hesapla
+
         averages, cumulative = {}, []
         for slot in SLOT_ORDER:
             cumulative.extend(slot_values[slot])
@@ -789,12 +764,10 @@ class PatientWindow(tk.Toplevel):
                              if cumulative else None
         return averages, slot_values
 
-# ---------------------------------------------------------------
-#   İNSÜLİN ÖNERİSİ
- # ---------------------------------------------------------------
+
     @staticmethod
     def _dose_for_avg(avg: float | None) -> str:
-        """Tablodaki aralıklara göre dozu döndürür."""
+
         if avg is None:
             return "—"
         if avg < 70:
@@ -808,17 +781,9 @@ class PatientWindow(tk.Toplevel):
         return "3 ml"
 
     def _show_insulin_suggestion(self):
-        """
-        Hem günün genel (gece) ortalamasını hem de SLOT_ORDER dizisindeki
-        *her öğün* için kümülatif ortalamayı hesaplar ve tablodaki sınırlar
-        doğrultusunda doz önerilerini listeler.
 
-        ─ Kapanan bir gün varsa self.closed_date kullanılır,
-          yoksa bugün (date.today()) baz alınır.
-        ─ Ölçüm yoksa / eksikse uyarı verilir.
-        """
 
-        from services.glucose import list_for_date  # yardımcı sorgu
+        from services.glucose import list_for_date
 
         target_day = getattr(self, "closed_date", date.today())
         rows = list_for_date(self.patient_id, target_day)
@@ -830,10 +795,10 @@ class PatientWindow(tk.Toplevel):
             )
             return
 
-        # ► Öğün bazlı ortalamalar (kümülatif kural)
+
         slot_avgs, _ = self._compute_slot_averages(rows)
 
-        # ► Doz eşik tablosu ------------------------------------------------
+
         def dose_for(avg_val: float | None) -> str:
             if avg_val is None:
                 return "—"
@@ -847,7 +812,7 @@ class PatientWindow(tk.Toplevel):
                 return "2 ml"
             return "3 ml"
 
-        # ► Mesaj gövdesi  --------------------------------------------------
+
         lines = [f"📅 Tarih: {target_day.strftime('%d.%m.%Y')}\n"]
         for slot in SLOT_ORDER:
             avg_val = slot_avgs[slot]
@@ -862,7 +827,7 @@ class PatientWindow(tk.Toplevel):
         )
 
     def _update_symptom_info(self):
-        """Veritabanından semptomları çekip etiketi günceller."""
+
         try:
             symptoms = list_symptoms(self.patient_id)
             if symptoms:
@@ -871,25 +836,18 @@ class PatientWindow(tk.Toplevel):
                 txt = "Hastadaki belirtiler: —"
             self.symptom_lbl.config(text=txt, bootstyle="warning" if symptoms else "secondary")
         except Exception as err:
-            # sessiz hata; etiketi kırmızı yap
+
             self.symptom_lbl.config(text=f"Semptom okunamadı: {err}", bootstyle="danger")
 
-# kartın en altına ekleyin
-    # ------------------------------------------------------------
-    #   DİYET – EGZERSİZ ÖNERİSİNİ HESAPLA ve EKRANA YAZ
-    # ------------------------------------------------------------
-    def _update_lifestyle_suggestion(self, day_avg: float | None):
-        """
-        Günlük ort. glukoz (day_avg) + hastanın belirtileri
-        → tablo-tabanlı diyet & egzersiz önerisi üretir ve
-        self.suggest_lbl etiketini günceller.
-        """
 
-        # 1) Hastanın son semptom listesi  (tamamı küçük-harf)
+
+    def _update_lifestyle_suggestion(self, day_avg: float | None):
+
+
         from services.symptom import list_symptoms
         syms = {s.lower() for s in list_symptoms(self.patient_id)}
 
-        # Ölçüm yoksa / ort. belirsizse
+
         if day_avg is None:
             self.suggest_lbl.config(
                 text="Bugünün ölçümleri yetersiz — öneri üretilemedi.",
@@ -897,7 +855,7 @@ class PatientWindow(tk.Toplevel):
             )
             return
 
-        # 2) Kural tablosu  (alt, üst, belirtiler, diyet, egzersiz)
+
         RULES = [
             (None, 70, {"nöropati", "polifaji", "yorgunluk"},
              "⚖️ Dengeli", "—"),
@@ -924,7 +882,7 @@ class PatientWindow(tk.Toplevel):
                 diet, ex = d, e
                 break
 
-        # 3) Metni oluştur
+
         txt = ("Hastadaki belirtiler yok." if not syms else
                f"Hastadaki belirtiler: {', '.join(sorted(syms))}")
 
@@ -936,19 +894,15 @@ class PatientWindow(tk.Toplevel):
             txt += "\n\n• Henüz tabloya uyan bir öneri yok."
             style = "secondary"
 
-        # 4) Ekrana yaz
+
         self.suggest_lbl.config(text=txt, bootstyle=style)
 
 
-    # ==================== PLAN ÖNERİSİ ==================== #
-    def _show_plan_suggestion(self):
-        """
-        Günlük ort. glukoz + hastanın kayıtlı belirtilerine göre
-        tablo-temelli diyet / egzersiz önerisini hesaplar ve
-        self.suggest_lbl etiketine yazar.
-        """
 
-        # ---- 1) Bugünün ortalama glukozu -------------------------------
+    def _show_plan_suggestion(self):
+
+
+
         todays = list_today(self.patient_id)
         if not todays:
             ttk.dialogs.Messagebox.show_warning(
@@ -958,7 +912,7 @@ class PatientWindow(tk.Toplevel):
             return
         avg = sum(r["value_mg_dl"] for r in todays) / len(todays)
 
-        # ---- 2) Hastanın aktif belirtileri (tamamı küçük-harf) ----------
+
         with db_cursor() as cur:
             cur.execute(
                 "SELECT description FROM symptoms "
@@ -967,7 +921,7 @@ class PatientWindow(tk.Toplevel):
             )
             syms = {row["description"].lower() for row in cur.fetchall()}
 
-        # ---- 3) Kural tablosu -------------------------------------------
+
         RULES = [
             ((0, 70), {"nöropati", "polifaji", "yorgunluk"},
              ("⚖️ Dengeli Beslenme", "—")),
@@ -989,11 +943,11 @@ class PatientWindow(tk.Toplevel):
 
         diet = ex = None
         for (lo, hi), trig_syms, (d, e) in RULES:
-            if lo <= avg < hi and syms & trig_syms:  # aralık + kesişim
+            if lo <= avg < hi and syms & trig_syms:
                 diet, ex = d, e
                 break
 
-        # ---- 4) Sonucu göster ------------------------------------------
+
         if diet is None:
             ttk.dialogs.Messagebox.show_info(
                 "Veriler mevcut kurallarla eşleşmedi.", "Öneri Yok", parent=self
@@ -1004,5 +958,8 @@ class PatientWindow(tk.Toplevel):
             text=f"Diyet Planı Önerisi: {diet}\nEgzersiz Önerisi: {ex}"
         )
 
+    def _show_status(self):
+
+        StatusWindow(self, self.patient_id, self.patient_name)
 
 
